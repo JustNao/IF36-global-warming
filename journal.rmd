@@ -1,0 +1,97 @@
+```{r, include=FALSE}
+library(tidyverse)
+library(rworldmap)
+library(geosphere)
+library(gpclib)
+library(mapproj)
+library(sf)
+library(rnaturalearth)
+data <- read_csv('Climate Data - Monthly.csv')
+```
+
+Le dataset étant assez conséquent, nous avons procédé par étape.
+Tout d'abord, quelques lignes n'ont pas été importées d'une manière utilisable. Nous les avons donc converti dans une unité qui nous convenait. Pour les dates, nous avons utilisé le format Date, qui nécessite un jour. On a donc placé toutes les dates au premier jour du mois.
+
+```{r}
+data$`YEAR-MONTH` <- as.Date(paste(data$`YEAR-MONTH`,"-01",sep=""))
+data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG` <- as.character(data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG`)
+```
+
+Ensuite, on a isolé la première station avec son ID (01001) pour voir son évolution pendant toutes les années qui ont été registrées.
+
+```{r}
+firstStation <- data %>% filter(`WMO ID` == '01001')
+firstStation %>% 
+  ggplot(aes(x = firstStation$`YEAR-MONTH`, y = firstStation$`MEAN TEMPERATURE (deg C)`)) + 
+  geom_line() + 
+  labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne")
+```
+
+Une première représentation avec un geom_line() nous rappelle que les saisons existent. Il nous faut donc une représentation plus stable sur l'année.
+
+```{r}
+firstStation %>% 
+  ggplot(aes(x = firstStation$`YEAR-MONTH`, y = firstStation$`MEAN TEMPERATURE (deg C)`)) + 
+  geom_smooth(method = 'loess', formula = 'y ~ x') +
+  labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne")
+```
+
+Après vérification, cette première station est assez isolée.
+
+```{r}
+worldMap <- getMap()
+world.points <- fortify(worldMap)
+world.points$region <- world.points$id
+
+world.df <- world.points[,c("long","lat","group", "region")]
+
+ggplot() + 
+  geom_polygon(data = world.df, aes(x = long, y = lat, group = group)) +
+  scale_y_continuous(breaks = (-2:2) * 30) +
+  scale_x_continuous(breaks = (-4:4) * 45) +
+  coord_map("ortho", orientation=c(50, -20, 0)) +
+  geom_point(aes(x = -8.67, y = 70.9), color='red')
+```
+
+Les conditions y sont un peu extrêmes, donc on va chercher des stations plus proches de chez nous. Cela nous permettra en plus de s'assurer que notre dataset a des bonnes infos.
+A vue de nez, on va situer la France dans une longitude entre -2 et 7, et dans une latitude entre 42 et 50.
+On va ensuite les grouper par ID pour avoir une seule donnée par station.
+
+```{r}
+franceStations <- data %>% 
+  filter(`LONGITUDE (deg)` > -2, `LONGITUDE (deg)` < 7, `LATITUDE (deg)` > 42, `LATITUDE (deg)` < 51)
+franceStationsPos <- franceStations %>% distinct(`WMO ID`, .keep_all = TRUE)
+worldmap <- ne_countries(scale = 'medium', type = 'map_units',
+                         returnclass = 'sf')
+france <- worldmap[worldmap$name == 'France',]
+
+ggplot() + geom_sf(data = france) + theme_bw() + geom_point(data = franceStationsPos , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color = "blue")
+```
+
+On aimerait avoir la moyenne de température sur toutes ces stations. On va donc grouper nos relevés par mois, en gardant la moyenne de toutes les stations sur ce mois-ci.
+
+```{r}
+franceTemp <- franceStations %>%
+  filter(`MEAN TEMPERATURE (deg C)` != -9999) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
+    geom_smooth(method = 'loess', formula = 'y ~ x') +
+    labs(title = "Evolution de la température moyenne en France", x = "Date", y = "Température moyenne")
+```
+
+On retrouve donc une evolution bien moins extrême, mais qui est toujours là (surtout dans les dernières années).
+
+On aimerait retrouver les périodes de grande chaleur dans les dernières années. La température maximale enregistrée convient parfaitement à notre besoin.
+
+```{r}
+franceStations %>%
+  filter(`MAXIMUM TEMPERATURE (deg C)` != -9999) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MAXIMUM TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
+    geom_line() +
+    labs(title = "Evolution de la température maximale en France", x = "Date", y = "Température moyenne")
+```
+
+On peut ici bien démarquer deux années vers 2005 : ce sont les canicules de 2003 et 2006, la première faisant 15.000 morts.
