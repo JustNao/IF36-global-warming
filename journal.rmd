@@ -95,3 +95,5 @@ franceStations %>%
 ```
 
 On peut ici bien démarquer deux années vers 2005 : ce sont les canicules de 2003 et 2006, la première faisant 15.000 morts.
+
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaaaaaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
