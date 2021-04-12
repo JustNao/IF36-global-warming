@@ -6,7 +6,7 @@ library(gpclib)
 library(mapproj)
 library(sf)
 library(rnaturalearth)
-data <- read_csv('Climate Data - Monthly.csv')
+data <- read_csv('./data/Meteo_Station.csv')
 ```
 
 Le dataset étant assez conséquent, nous avons procédé par étape.
@@ -15,6 +15,7 @@ Tout d'abord, quelques lignes n'ont pas été importées d'une manière utilisab
 ```{r}
 data$`YEAR-MONTH` <- as.Date(paste(data$`YEAR-MONTH`,"-01",sep=""))
 data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG` <- as.character(data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG`)
+data$`MAXIMUM TEMPERATURE (deg C)` <- (data$`MAXIMUM TEMPERATURE (deg C)`)/10
 ```
 
 Ensuite, on a isolé la première station avec son ID (01001) pour voir son évolution pendant toutes les années qui ont été registrées.
@@ -72,7 +73,7 @@ On aimerait avoir la moyenne de température sur toutes ces stations. On va donc
 
 ```{r}
 franceTemp <- franceStations %>%
-  filter(`MEAN TEMPERATURE (deg C)` != -9999) %>% # On enlève les relevés sans températures
+  filter(`MEAN TEMPERATURE (deg C)` > -800) %>% # On enlève les relevés sans températures
   group_by(`YEAR-MONTH`) %>%
   summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
@@ -86,7 +87,7 @@ On aimerait retrouver les périodes de grande chaleur dans les dernières année
 
 ```{r}
 franceStations %>%
-  filter(`MAXIMUM TEMPERATURE (deg C)` != -9999) %>% # On enlève les relevés sans températures
+  filter(`MAXIMUM TEMPERATURE (deg C)` > -800) %>% # On enlève les relevés sans températures
   group_by(`YEAR-MONTH`) %>%
   summarize(Temp = mean(`MAXIMUM TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
