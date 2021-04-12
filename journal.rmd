@@ -16,6 +16,8 @@ Tout d'abord, quelques lignes n'ont pas été importées d'une manière utilisab
 data$`YEAR-MONTH` <- as.Date(paste(data$`YEAR-MONTH`,"-01",sep=""))
 data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG` <- as.character(data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG`)
 data$`MAXIMUM TEMPERATURE (deg C)` <- (data$`MAXIMUM TEMPERATURE (deg C)`)/10
+data$`MINIMUM TEMPERATURE (deg C)` <- (data$`MINIMUM TEMPERATURE (deg C)`)/10
+data$`MEAN TEMPERATURE (deg C)` <- (data$`MEAN TEMPERATURE (deg C)`)/10
 ```
 
 Ensuite, on a isolé la première station avec son ID (01001) pour voir son évolution pendant toutes les années qui ont été registrées.
@@ -72,7 +74,7 @@ ggplot() + geom_sf(data = france) + theme_bw() + geom_point(data = franceStation
 On aimerait avoir la moyenne de température sur toutes ces stations. On va donc grouper nos relevés par mois, en gardant la moyenne de toutes les stations sur ce mois-ci.
 
 ```{r}
-franceTemp <- franceStations %>%
+franceStations %>%
   filter(`MEAN TEMPERATURE (deg C)` > -800) %>% # On enlève les relevés sans températures
   group_by(`YEAR-MONTH`) %>%
   summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
@@ -81,7 +83,7 @@ franceTemp <- franceStations %>%
     labs(title = "Evolution de la température moyenne en France", x = "Date", y = "Température moyenne")
 ```
 
-On retrouve donc une evolution bien moins extrême, mais qui est toujours là (surtout dans les dernières années).
+On retrouve donc une évolution bien moins extrême, mais qui est toujours là (surtout dans les dernières années).
 
 On aimerait retrouver les périodes de grande chaleur dans les dernières années. La température maximale enregistrée convient parfaitement à notre besoin.
 
@@ -96,3 +98,33 @@ franceStations %>%
 ```
 
 On peut ici bien démarquer deux années vers 2005 : ce sont les canicules de 2003 et 2006, la première faisant 15.000 morts.
+Est-ce qu'on pourrait isoler d'autres évènements importants des dernières années ?
+
+```{r}
+australiaTemp <- data %>%
+  filter(`LONGITUDE (deg)` > 113, `LONGITUDE (deg)` < 153, `LATITUDE (deg)` > -35, `LATITUDE (deg)` < -14) %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(temp = mean(`MEAN TEMPERATURE (deg C)`))
+
+franceTemp <- franceStations %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(temp = mean(`MEAN TEMPERATURE (deg C)`))
+
+data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  arrange(`YEAR-MONTH`) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(globalTemp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`)) + 
+    geom_smooth(aes(y = globalTemp), method = 'loess', formula = 'y ~ x', color = "green", se=F) +
+    geom_smooth(aes(y = franceTemp$temp), method = 'loess', formula = 'y ~ x', color = "blue", se=F) +
+    geom_smooth(aes(y = australiaTemp$temp), method = 'loess', formula = 'y ~ x', color = "red", se=F) +
+    ylim(0, 30) + 
+    labs(title = "Evolution de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne")
+```
+
