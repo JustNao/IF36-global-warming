@@ -6,6 +6,7 @@ library(gpclib)
 library(mapproj)
 library(sf)
 library(rnaturalearth)
+library(plotly)
 data <- read_csv('./data/Meteo_Station.csv')
 ```
 
@@ -121,10 +122,46 @@ data %>%
   group_by(`YEAR-MONTH`) %>%
   summarize(globalTemp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`)) + 
-    geom_smooth(aes(y = globalTemp), method = 'loess', formula = 'y ~ x', color = "green", se=F) +
-    geom_smooth(aes(y = franceTemp$temp), method = 'loess', formula = 'y ~ x', color = "blue", se=F) +
-    geom_smooth(aes(y = australiaTemp$temp), method = 'loess', formula = 'y ~ x', color = "red", se=F) +
+    geom_smooth(aes(y = globalTemp, color = "green"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(aes(y = franceTemp$temp, color = "blue"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(aes(y = australiaTemp$temp, color = "red"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
     ylim(0, 30) + 
-    labs(title = "Evolution de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne")
+    labs(title = "Evolution de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne") +
+  scale_color_identity(name = "Zones",
+                       breaks = c("green", "blue", "red"),
+                       labels = c("World", "France", "Australia"),
+                       guide = "legend")
 ```
 
+Ce graphique illustre très bien la différence des saisons entre l'hémisphère Nord et Sud. On remarque de plus que la moyenne sur le monde entier correspond plus à un pays de l'hémisphère Nord qu'une moyenne entre les deux ... peut-être à cause de la répartition des stations ?
+
+```{r}
+southStations <- data %>%
+  filter(`LATITUDE (deg)` < 0)
+northStations <- data %>%
+  filter(`LATITUDE (deg)` > 0)
+c("South", count(southStations), "North", count(northStations))
+```
+
+Et il y a bien 3 fois plus de relevés dans le nord que dans le sud. Dorénavant, nous allons donc séparer les relevés entre les deux hémisphères.
+Le cas de l'Australie est très intéressant. Est-ce que les feux de l'année dernière peuvent s'expliquer par la météo ?
+
+```{r}
+australiaTemp <- data %>%
+  filter(`LONGITUDE (deg)` > 113, `LONGITUDE (deg)` < 153, `LATITUDE (deg)` > -35, `LATITUDE (deg)` < -14) %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2010-01-01"))) %>%
+  filter(`MAXIMUM TEMPERATURE (deg C)` > -800) %>% # On enlève les relevés sans températures
+  filter(`TOTAL PRECIPITATION (mm)` > -800) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(temp = mean(`MAXIMUM TEMPERATURE (deg C)`), rain = mean(`TOTAL PRECIPITATION (mm)`))
+coeff <- 150
+
+plot <- australiaTemp %>%
+  ggplot(aes(x = `YEAR-MONTH`)) + 
+  geom_line(aes(y = temp, colour = "Temp")) +
+  geom_line(aes(y = rain/coeff + 20, colour = "Rain")) +
+  labs( colour = "Données" )
+ggplotly(plot)
+```
+
+On peut donc remarquer que l'année 2020 a non seulement été une des plus chaudes de la décennie, mais elle a aussi reçu le moins de précipitations.
