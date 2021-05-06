@@ -1,3 +1,9 @@
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+
 ```{r, include=FALSE}
 library(tidyverse)
 library(rworldmap)
@@ -8,20 +14,26 @@ library(sf)
 library(rnaturalearth)
 library(plotly)
 data <- read_csv('./data/Meteo_Station.csv')
+tempColor <- '#ec7c73'
 ```
 
-Le dataset étant assez conséquent, nous avons procédé par étape.
-Tout d'abord, quelques lignes n'ont pas été importées d'une manière utilisable. Nous les avons donc converti dans une unité qui nous convenait. Pour les dates, nous avons utilisé le format Date, qui nécessite un jour. On a donc placé toutes les dates au premier jour du mois.
+## Exploration
 
-```{r}
+Le dataset étant assez conséquent, nous avons procédé par étape.
+Tout d'abord, quelques lignes n'ont pas été importées d'une manière utilisable. Nous les avons donc converti dans une unité qui nous convenait (caractères pour les flags par exemple). Pour les dates, nous avons utilisé le format Date, qui nécessite un jour. Or, nos données ne contiennent que le mois et l'année. On a donc placé toutes les dates au premier jour du mois.
+
+```{r, include=FALSE}
 data$`YEAR-MONTH` <- as.Date(paste(data$`YEAR-MONTH`,"-01",sep=""))
 data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG` <- as.character(data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG`)
 data$`MAXIMUM TEMPERATURE (deg C)` <- (data$`MAXIMUM TEMPERATURE (deg C)`)/10
 data$`MINIMUM TEMPERATURE (deg C)` <- (data$`MINIMUM TEMPERATURE (deg C)`)/10
 data$`MEAN TEMPERATURE (deg C)` <- (data$`MEAN TEMPERATURE (deg C)`)/10
+head(data)
 ```
 
-Ensuite, on a isolé la première station avec son ID (01001) pour voir son évolution pendant toutes les années qui ont été registrées.
+### Première station
+
+On a ensuite voulu voir un peu la qualité de nos données. Après un affichage des premières stations pour vérifier que les variables avaient une bonne tête, nous avons isolé la première station affichée grâce à son ID : 01001. Avec ça, on a pu représenter l'évolution des températures moyennes à cette station (pendant la période des relevés). Un premier filtre a du être réalisé sur les données (qui d'ailleurs sera appliqué sur presque chaque graphe suivant), pour enlever les relevés qui n'ont pas de valeur. Par défaut, notre dataset nous informe de cette absence en mettant la valeur à soit 9999, soit -9999. On a donc gardé les valeurs qui étaient entre -800 °C et 800 °C (choix totalement arbitraire).
 
 ```{r, out.width='100%'}
 firstStation <- data %>% filter(`WMO ID` == '01001')
@@ -29,25 +41,28 @@ firstStation <- data %>% filter(`WMO ID` == '01001')
 plot <- firstStation %>%
   filter(`MEAN TEMPERATURE (deg C)` < 800, `MEAN TEMPERATURE (deg C)` > -800) %>%
   ggplot(aes(x = firstStation$`YEAR-MONTH`, y = firstStation$`MEAN TEMPERATURE (deg C)`)) + 
-  geom_line() + 
+  geom_line(color = tempColor) +
   labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne")
 ggplotly(plot)
 ```
 
-Une première représentation avec un geom_line() nous rappelle que les saisons existent. Il nous faut donc une représentation plus stable sur l'année.
+Une première représentation avec un geom_line() nous rappelle que les saisons existent. Il nous faut donc une représentation plus stable sur l'année. On peut même garder la première représentation et juste ajouter une moyenn pour y voir plus claire.
 
 ```{r, out.width='100%'}
-plot <- firstStation %>% 
+plot <- firstStation %>%
   filter(`MEAN TEMPERATURE (deg C)` < 800, `MEAN TEMPERATURE (deg C)` > -800) %>%
   ggplot(aes(x = firstStation$`YEAR-MONTH`, y = firstStation$`MEAN TEMPERATURE (deg C)`)) + 
-  geom_smooth(method = 'loess', formula = 'y ~ x') +
+  geom_line(color = tempColor) + 
+  geom_smooth(method = 'loess', formula = 'y ~ x', se=F) +
   labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne")
 ggplotly(plot)
 ```
+On vient donc de démontrer le réchauffement climatique.
 
-Après vérification, cette première station est assez isolée.
+Plus sérieusement, en prenant une première station au hasard, on voit déjà que la température moyenne a augmenté de plus de 2 °C pendant les dernières années, faisant même dépasser la barre des 0 °C moyens de la station.
+Cette dernière donnée est d'ailleurs assez étonnante. Où est-ce que notre première station peut bien être ?
 
-```{r}
+```{r, echo = FALSE}
 worldMap <- getMap()
 world.points <- fortify(worldMap)
 world.points$region <- world.points$id
@@ -59,27 +74,31 @@ ggplot() +
   scale_y_continuous(breaks = (-2:2) * 30) +
   scale_x_continuous(breaks = (-4:4) * 45) +
   coord_map("ortho", orientation=c(50, -20, 0)) +
-  geom_point(aes(x = -8.67, y = 70.9), color='red')
+  geom_point(aes(x = -8.67, y = 70.9), color='red') +
+  labs(title = "Position de notre première station")
 ```
 
-Les conditions y sont un peu extrêmes, donc on va chercher des stations plus proches de chez nous. Cela nous permettra en plus de s'assurer que notre dataset a des bonnes infos.
-A vue de nez, on va situer la France dans une longitude entre -2 et 7, et dans une latitude entre 42 et 50.
+Les conditions y sont un peu extrêmes, donc on va chercher des stations plus proches de chez nous. Cela nous permettra en plus de s'assurer que notre dataset a des relevés bien répartis.
+
+### France
+
+A vue de nez, on va situer la France dans une longitude entre -4.5 et 7, et dans une latitude entre 42.7 et 50.7, pour filtrer toutes nos stations.
 On va ensuite les grouper par ID pour avoir une seule donnée par station.
 
 ```{r}
 franceStations <- data %>% 
-  filter(`LONGITUDE (deg)` > -2, `LONGITUDE (deg)` < 7, `LATITUDE (deg)` > 42, `LATITUDE (deg)` < 51)
+  filter(`LONGITUDE (deg)` > -4.5, `LONGITUDE (deg)` < 7, `LATITUDE (deg)` > 42.7, `LATITUDE (deg)` < 50.7)
 
 franceStationsPos <- franceStations %>% distinct(`WMO ID`, .keep_all = TRUE)
 worldmap <- ne_countries(scale = 'medium', type = 'map_units',
                          returnclass = 'sf')
 france <- worldmap[worldmap$name == 'France',]
 
-plot <- ggplot() + geom_sf(data = france) + theme_bw() + geom_point(data = franceStationsPos , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color = "blue")
+plot <- ggplot() + geom_sf(data = france) + theme_bw() + geom_point(data = franceStationsPos , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color = "blue") + labs(title = "Position des stations météos en France")
 ggplotly(plot)
 ```
 
-On aimerait avoir la moyenne de température sur toutes ces stations. On va donc grouper nos relevés par mois, en gardant la moyenne de toutes les stations sur ce mois-ci.
+Le filtre par longitude/latitude n'est pas parfait, la France n'ayant pas la forme du Colorado; il laisse passer quelques stations d'Espagne de la côte Nord, et une du Royaume Uni vers Plymouth. On aimerait tout de même avoir la moyenne de température sur toutes ces stations. On va donc grouper nos relevés par mois, en gardant la moyenne de toutes les stations sur ce mois-ci.
 
 ```{r, out.width='100%'}
 plot <- franceStations %>%
@@ -92,7 +111,7 @@ plot <- franceStations %>%
 ggplotly(plot)
 ```
 
-On retrouve donc une évolution bien moins extrême, mais qui est toujours là (surtout dans les dernières années).
+On retrouve donc une évolution moins extrême, mais qui est toujours là (surtout dans les dernières années).
 
 On aimerait retrouver les périodes de grande chaleur dans les dernières années. La température maximale enregistrée convient parfaitement à notre besoin.
 
@@ -102,13 +121,22 @@ plot <- franceStations %>%
   group_by(`YEAR-MONTH`) %>%
   summarize(Temp = mean(`MAXIMUM TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
-    geom_line() +
+    geom_line(color = tempColor) +
+    geom_hline(yintercept = 27.5, linetype = "dotted", colour= 'red') +
     labs(title = "Evolution de la température maximale en France", x = "Date", y = "Température maximale moyenne")
 ggplotly(plot)
 ```
 
-On peut ici bien démarquer deux années vers 2005 : ce sont les canicules de 2003 et 2006, la première faisant 15.000 morts.
-Est-ce qu'on pourrait isoler d'autres évènements importants des dernières années ?
+On peut ici bien démarquer deux années vers 2005 : ce sont les canicules de [2003](https://fr.wikipedia.org/wiki/Canicule_europ%C3%A9enne_d%27ao%C3%BBt_2003?oldformat=true) et [2006](https://www.wikiwand.com/fr/Canicule_de_juillet_2006_en_France), la première faisant 15.000 morts.
+Est-ce qu'on peut isoler d'autres évènements importants des dernières années ?
+
+## Australie
+
+On va s'intéresser ici à l'Australie, et plus particulièrement aux feux dont on a autant entendu parler en 2020.
+
+### Comparaison moyenne des températures
+
+On va commencer par regarder les températures moyennes de l'Australie pour se donner un peu une idée du pays. On peut les comparer avec la France et le monde entier.
 
 ```{r, out.width='100%'}
 australiaTemp <- data %>%
@@ -139,18 +167,52 @@ plot <- data %>%
 ggplotly(plot)
 ```
 
-Ce graphique illustre très bien la différence des saisons entre l'hémisphère Nord et Sud. On remarque de plus que la moyenne sur le monde entier correspond plus à un pays de l'hémisphère Nord qu'une moyenne entre les deux ... peut-être à cause de la répartition des stations ?
+Pour notre objectif initial, l'Australie a bien 10 °C de plus sur l'année que le France ou le reste du monde.
+Mais est-ce que c'est vraiment ça la température sur le reste du monde ? On peut remarquer que la moyenne sur le monde entier correspond plus à un pays de l'hémisphère Nord qu'une moyenne entre les deux ... peut-être à cause de la répartition des stations ?
 
 ```{r}
 southStations <- data %>%
-  filter(`LATITUDE (deg)` < 0)
+  filter(`LATITUDE (deg)` < 0, `LATITUDE (deg)` > -1000)
 northStations <- data %>%
-  filter(`LATITUDE (deg)` > 0)
-c("South", count(southStations), "North", count(northStations))
+  filter(`LATITUDE (deg)` > 0, `LATITUDE (deg)` < 1000)
+stationCount <- data.frame(
+  Hemisphere = c("South", "North"),
+  count = c(count(southStations) %>% pull(),count(northStations) %>% pull())
+)
+
+stationCount %>% ggplot(aes(x=count, y=Hemisphere, colour = Hemisphere, fill = Hemisphere)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Répartition des relevés entre hémisphère Nord et Sud")
 ```
 
-Et il y a bien 3 fois plus de relevés dans le nord que dans le sud. Dorénavant, nous allons donc séparer les relevés entre les deux hémisphères.
-Le cas de l'Australie est très intéressant. Est-ce que les feux de l'année dernière peuvent s'expliquer par la météo ?
+Et il y a bien 3 fois plus de relevés dans le nord que dans le sud. Il peut alors être intéressant d'essayer de corriger cette inégalité. Une simple division nous donnant un ratio de 3.596679, nous allons dupliquer les relevés de l'hémisphère Sud.
+
+```{r, echo=FALSE}
+as.numeric(count(northStations) / count(southStations))
+```
+```{r, out.width='100%'}
+plot <- bind_rows(data, southStations, southStations, southStations[0:as.numeric(round(count(southStations)*0.596679)),]) %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800, `LATITUDE (deg)` > -1000, `LATITUDE (deg)` < 1000) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  arrange(`YEAR-MONTH`) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(globalTemp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`)) + 
+    geom_smooth(aes(y = globalTemp, color = "World"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(aes(y = franceTemp$temp, color = "France"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(aes(y = australiaTemp$temp, color = "Australia"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    ylim(0, 30) + 
+    labs(title = "Evolution de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne", colour = "Données")
+ggplotly(plot)
+```
+
+Le résultat obtenu est assez satisfaisant, étant donnée notre technique de duplication des relevés un peu approximative.
+On se rapproche plus d'une moyenne entre les deux hémisphères, même si le côté Nord se fait encore assez ressentir.
+
+### Etude spécifique de l'Australie
+
+On va maintenant s'intéresser uniquement à l'Australie, et plus particulièrement ses feux.
+Les données intéressantes de notre dataset seraient alors la température maximale atteinte, et la quantité de précipitations au cours des années.
 
 ```{r, out.width='100%'}
 australiaTemp <- data %>%
@@ -167,11 +229,12 @@ plot <- australiaTemp %>%
   ggplot(aes(x = `YEAR-MONTH`)) + 
   geom_line(aes(y = temp, colour = "Temp")) +
   geom_line(aes(y = rain/coeff + 20, colour = "Rain")) +
-  labs( colour = "Données" )
+  geom_vline(xintercept = as.numeric(as.Date('2019-05-01')), linetype = "dotted", colour= 'red') +
+  labs(title = "Evolution des températures et précipitations en Australie", colour = "Données" )
 ggplotly(plot)
 ```
 
-L'échelle de la pluie est complètement cassée, nous avons du l'adapter pour qu'elle soit facilement comparable à la température. La corrélation vient des saisons (janvier étant le milieu d'été en Australie). Si vous vous en souvenez, les feux en Australie ont commencé à être vraiment diffusés mondialement courant Mars 2020. Cependant, il s'avère que les feux duraient alors depuis bien longtemps, et ont commencé vers Août 2019, période que l'on peut remarquer comme étant très sèche et avec une température très élevée par rapport au reste de la décennie. La plupart des feux de cette période s'avèrent avoir été commencés par de la foudre, dont la fréquence augmente en cas de sécheresse et haute température.
+L'échelle de la pluie est complètement cassée, nous avons du l'adapter pour qu'elle soit facilement comparable à la température. La corrélation vient des saisons (janvier étant le milieu d'été en Australie). Si vous vous en souvenez, les feux en Australie ont commencé à être vraiment diffusés mondialement courant Mars 2020. Cependant, il s'avère que les feux duraient alors depuis bien longtemps, et ont [commencé vers Juin 2019](https://www.wikiwand.com/en/2019%E2%80%9320_Australian_bushfire_season) (ligne en rouge sur le graphique), début de période que l'on peut remarquer comme étant très sèche et avec une température très élevée par rapport au reste de la décennie. La plupart des feux de cette période s'avèrent avoir été commencés par de la foudre, dont la fréquence augmente en cas de sécheresse et haute température.
 En poussant un peu plus les recherches, on a appris que la sécheresse - et les feux - ont été principalement sur la côté Est. Est-ce qu'on peut noter la différence par les graphes ?
 
 ```{r, out.width='100%'}
@@ -197,7 +260,7 @@ plot <- australiaWestTemp %>%
   ggplot(aes(x = `YEAR-MONTH`)) + 
   geom_line(aes(y = temp, colour = "West")) +
   geom_line(aes(y = australiaEstTemp$temp, colour = "East")) +
-  labs( colour = "Données" )
+  labs(title = "Evolution de la température sur les deux côtes", colour = "Données" )
 ggplotly(plot)
 ```
 
@@ -208,8 +271,10 @@ plot <- australiaWestTemp %>%
   ggplot(aes(x = `YEAR-MONTH`)) + 
   geom_line(aes(y = rain, colour = "West")) +
   geom_line(aes(y = australiaEstTemp$rain, colour = "East")) +
-  labs( colour = "Données" )
+  labs(title = "Evolution de la quantité de précipitation sur les deux côtes",  colour = "Données" )
 ggplotly(plot)
 ```
 
 Mais c'est en terme de précipitations que la différence s'est fait ressentir. Une pluie faible tout au long de la période, et une saison des pluies très insuffisante.
+
+La différence Nord/Sud dont nous avons parlé plus tôt est très [intéressante](https://youtu.be/dQw4w9WgXcQ). On aimerait voir si on peut séparer la Terre en différents zones de chaleurs de la même manière.
