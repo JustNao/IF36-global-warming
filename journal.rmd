@@ -317,3 +317,20 @@ plot <- polarStations %>%
 ggplotly(plot)
 ```
 
+On constate (avec horreur) que depuis les années 1990 la température aux pôles augmente de plus en plus, particulièrement les températures maximales. 
+
+Nous souhaitons voir comment cette augmentation influe sur la problématique des fontes des banquises, un sujet qui est très médiatisé depuis les années 2000. 
+
+Le format de date ne convenait pas aux utilisations que nous voulions en faire donc nous avons reformaté les tables afin d'obtenir des mesures pour chaque mois sous forme de ligne au bon format.
+Nous avons également ajusté le format des valeurs afin de garder la valeur décimale.
+
+```{r}
+dataSeaIceModified <- dataSeaIce %>%
+  select(-X14) %>%
+  gather(key = "Month",value = "Area",-X1,-Annual ) %>%
+  unite("Date", X1, Month, sep = "-", remove = TRUE)
+dataSeaIceModified$`Date` <- paste(dataSeaIceModified$`Date`,"01",sep="-")
+dataSeaIceModified$`Date` <- as.Date(format(parse_date(dataSeaIceModified$`Date`,"%Y-%B-%d",locale=locale("en")),"%Y-%m-%d"))
+dataSeaIceModified$`Area` <- (dataSeaIceModified$`Area`)/1000
+dataSeaIceModified$`Annual` <- (dataSeaIceModified$`Annual`)/1000
+```
