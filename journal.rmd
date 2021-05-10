@@ -279,3 +279,27 @@ ggplotly(plot)
 Mais c'est en terme de précipitations que la différence s'est fait ressentir. Une pluie faible tout au long de la période, et une saison des pluies très insuffisante.
 
 La différence Nord/Sud dont nous avons parlé plus tôt est très [intéressante](https://youtu.be/dQw4w9WgXcQ). On aimerait voir si on peut séparer la Terre en différents zones de chaleurs de la même manière.
+
+
+##GRAPH DIFFERENCES NORD SUD##
+
+Intéressons nous maintenant aux données météorologiques relevés autour du pôle nord. 
+Pour savoir quels stations prendre pour le relevés de pôles nous avons fixé une latitude de 75° qui nous permet d'avoir des stations autour du cercle pôlaire. 
+
+```{r}
+worldMap <- getMap()
+world.points <- fortify(worldMap)
+world.points$region <- world.points$id
+
+world.df <- world.points[,c("long","lat","group", "region")]
+
+polarStations <- data %>% 
+  filter(`LONGITUDE (deg)` < 180,  `LATITUDE (deg)` > 75)
+
+  ggplot() + 
+    geom_polygon(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map("ortho", orientation=c(50, -20, 0)) +
+    geom_point(data = polarStations , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color='red')
+```
