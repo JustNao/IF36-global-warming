@@ -334,3 +334,15 @@ dataSeaIceModified$`Date` <- as.Date(format(parse_date(dataSeaIceModified$`Date`
 dataSeaIceModified$`Area` <- (dataSeaIceModified$`Area`)/1000
 dataSeaIceModified$`Annual` <- (dataSeaIceModified$`Annual`)/1000
 ```
+
+Ce Dataset représente l'évolution de la surface de la banquise en millions de km².
+
+```{r, out.width='100%'}
+plot <- dataSeaIceModified %>%
+    ggplot(aes(x = `Date`, y = `Area`)) + 
+    geom_smooth(method = 'loess', formula = 'y ~ x') +
+    labs(title = "Evolution de la surface de la banquise en fonction du temps", x = "Date", y = "Aire en Mkm²")
+ggplotly(plot)
+```
+
+On constate qu'au fil du temps , la taille de la banquise diminue depuis  1995 jusqu'à nos jours.
