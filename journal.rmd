@@ -393,3 +393,16 @@ GreenlandStation <- data %>%
     geom_point(data = GreenlandStation , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color='red')
 ```
 
+Si l'en prend la station météorologique la plus au Nord du Groenland on constate en effet qu'il y a eu en 2018 un pic de température positive en été. 
+
+```{r, out.width='100%'}
+plot <- GreenlandStation %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2019-01-01")), `YEAR-MONTH` >= as.Date(as.character("2018-01-01"))) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`)) +
+    geom_line(aes(y = Temp, colour = "Température")) +
+    labs(title = "Evolution de la témparature au nord du Groenland", x = "Date", y = "Température moyenne")
+ggplotly(plot)
+```
