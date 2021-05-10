@@ -368,3 +368,9 @@ plot <- ggplot() +
     labs(title = "Evolution de la temparature et de la surface de la banquise en fontion du temps", x = "Date", y = "Température moyenne/Aire en Mkm²", colour = "Données")
 ggplotly(plot)
 ```
+
+On constate donc qu'il y a en effet une correlation entre la temperature qui augmente aux pôles et la surface des glaciers dû au réchauffement des pôles qui donc fait fondre la glace. 
+
+En 2018 le Groenland a vécu pour la première fois, la cassure de sa banquise en été révélant des eaux sans glace, phénomène qui n'était jamais arrivé et qui montre bien les première répercussions de cette réduction de la surface de la banquise et les causes de l'augmentation de la température.
+
+https://www.theguardian.com/world/2018/aug/21/arctics-strongest-sea-ice-breaks-up-for-first-time-on-record
