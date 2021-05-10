@@ -4,10 +4,11 @@ library(rworldmap)
 library(geosphere)
 library(gpclib)
 library(mapproj)
-library(sf)
 library(rnaturalearth)
 library(plotly)
+library(sf)
 data <- read_csv('./data/Meteo_Station.csv')
+dataSeaIce <- read_csv('./data/Sea_Ice.csv')
 ```
 
 Le dataset étant assez conséquent, nous avons procédé par étape.
