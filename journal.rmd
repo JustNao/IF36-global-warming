@@ -374,3 +374,22 @@ On constate donc qu'il y a en effet une correlation entre la temperature qui aug
 En 2018 le Groenland a vécu pour la première fois, la cassure de sa banquise en été révélant des eaux sans glace, phénomène qui n'était jamais arrivé et qui montre bien les première répercussions de cette réduction de la surface de la banquise et les causes de l'augmentation de la température.
 
 https://www.theguardian.com/world/2018/aug/21/arctics-strongest-sea-ice-breaks-up-for-first-time-on-record
+
+```{r}
+worldMap <- getMap()
+world.points <- fortify(worldMap)
+world.points$region <- world.points$id
+
+world.df <- world.points[,c("long","lat","group", "region")]
+
+GreenlandStation <- data %>% 
+  filter(`LONGITUDE (deg)` < 10, `LONGITUDE (deg)` > -20,  `LATITUDE (deg)` > 77)
+
+  ggplot() + 
+    geom_polygon(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map("ortho", orientation=c(50, -20, 0)) +
+    geom_point(data = GreenlandStation , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color='red')
+```
+
