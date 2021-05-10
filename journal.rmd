@@ -303,3 +303,17 @@ polarStations <- data %>%
     coord_map("ortho", orientation=c(50, -20, 0)) +
     geom_point(data = polarStations , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color='red')
 ```
+
+Nous souhaitons ici suivre l'évolution de la température au cours des années en les segmentant par mois. Les stations étant toutes assez proche du cercle polaire, on peut se permettre d'effectuer une moyenne des températures de chaque stations pour chaque mois. 
+
+```{r, out.width='100%'}
+plot <- polarStations %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
+    geom_smooth(method = 'loess', formula = 'y ~ x') +
+    labs(title = "Evolution de la température moyenne au pôle nord", x = "Date", y = "Température moyenne")
+ggplotly(plot)
+```
+
