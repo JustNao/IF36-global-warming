@@ -346,3 +346,25 @@ ggplotly(plot)
 ```
 
 On constate qu'au fil du temps , la taille de la banquise diminue depuis  1995 jusqu'à nos jours.
+
+Il est alors intéréssant de croiser ces données avec nos mesures préalablement effectués afin de déterminer une éventuelle correlation entre l'évolution de la température au pôles mesurés par les différentes stations autour du cercle pôlaire. 
+
+
+Afin de rapprocher les deux courbes pour mieux visualiser l'évolution au cours des ans nous avons réduit l'échelle de valeur de la surface en MKm en soustraillant "- 20" aux valeurs.
+
+```{r, out.width='100%'}
+
+arcticStations <- polarStations %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`))
+
+reducedDataSeaIce <- dataSeaIceModified %>%
+  filter(`Date` <= as.Date(as.character("2020-12-01")), `Date` >= as.Date(as.character("1986-01-01")))
+
+plot <- ggplot() + 
+    geom_smooth(data= arcticStations, aes(x = `YEAR-MONTH`, y = Temp, color = "Temperature"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(data= reducedDataSeaIce, aes(x = `Date`, y = Area -20, color = "Aire Mkm²"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    labs(title = "Evolution de la temparature et de la surface de la banquise en fontion du temps", x = "Date", y = "Température moyenne/Aire en Mkm²", colour = "Données")
+ggplotly(plot)
+```
