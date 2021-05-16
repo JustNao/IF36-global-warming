@@ -13,6 +13,7 @@ library(mapproj)
 library(rnaturalearth)
 library(plotly)
 library(sf)
+library(animation)
 data <- read_csv('./data/Meteo_Station.csv')
 dataSeaIce <- read_csv('./data/Sea_Ice.csv')
 tempColor <- '#ec7c73'
@@ -279,6 +280,127 @@ ggplotly(plot)
 Mais c'est en terme de précipitations que la différence s'est fait ressentir. Une pluie faible tout au long de la période, et une saison des pluies très insuffisante.
 
 La différence Nord/Sud dont nous avons parlé plus tôt est très [intéressante](https://youtu.be/dQw4w9WgXcQ). On aimerait voir si on peut séparer la Terre en différents zones de chaleurs de la même manière.
+
+## Zones de chaleur dans le monde
+
+Le seul problème que l'on peut rencontrer, c'est un manque de données. Nos relevés ne proviennent pas d'un satellite, mais de multiples stations sur le globe. On aura donc aucune valeur pour les océans (hormis les îles), et certains pays peuvent manquer de relevés, tandis que d'autres en auront énormément.
+On va donc grouper tous nos relevés par station, et faire une moyenne nos températures moyennes. On peut ensuite représenter tout ça avec des points dont la couleur varie la température.
+
+```{r, out.width='100%'}
+temp <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -20, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  # filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2019-01-01"))) %>%
+  group_by(`WMO ID`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct()
+
+rotate_map <- function(angle = -74, pointSize = 1){
+  ggplot() + 
+    geom_jitter(data = temp, aes(x = lon, y = lat, color = Temp), size = pointSize, alpha = 0.5) +
+    scale_color_gradient2(low = "green", high = "#FF0000", mid = "#3F94FE") +
+    geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map("ortho", orientation=c(20, angle, 0)) + 
+    labs(title = "Températures moyennes dans le monde")
+}
+
+rotate_map(60)
+```
+
+On a bien des grosses différences de relevés entre certain pays. On peut tricher et augmenter un peu la taille des points pour remplir un peu plus notre carte, en jouant sur la transparence de nos points.
+
+```{r, out.width='100%'}
+rotate_map(60, 2)
+```
+
+Et pour une version animée, parce que c'est assez stylé : [![Températures moyennes dans le monde](https://i.postimg.cc/gJKFpFGj/temp-world.gif)](https://postimg.cc/MMXr0LMJ)
+
+Mais bon, ce n'est pas le plus simple à lire si on cherche un pays en particulier. On peut donc changer la projection pour mieux représenter le monde en entier.
+
+```{r, out.width='100%'}
+temp <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -20, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  # filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2019-01-01"))) %>%
+  filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+  group_by(`WMO ID`) %>%
+  summarize(`Temp (°C)` = mean(`MEAN TEMPERATURE (deg C)`), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct()
+
+mercator_map <- function(pointSize = 2){
+  ggplot() + 
+    geom_jitter(data = temp, aes(x = lon, y = lat, color = `Temp (°C)`), size = pointSize, alpha = 0.5) +
+    scale_color_gradient2(low = "green", high = "#FF0000", mid = "#3F94FE") +
+    geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map(xlim=c(-180,180)) + 
+    labs(title = "Températures moyennes dans le monde")
+}
+
+mercator_map()
+```
+
+
+```{r}
+# saveGIF({
+#  ani.options(nmax = 360)
+#  for(i in seq(0,360)){
+#    print(rotate_map(i, 3))
+#    print(i)
+#  }
+#}, interval = 0.1, outdir="./data", movie.name = "temp_world.gif")
+```
+
+Ce graphe nous montre la température moyenne des pays sur les 30 dernières années. Cela est assez intéressant pour voir les zones de chaleur continentales, comparer les pays un à un, et voir les différences de chaleur dans un même pays en nous donnant plus de précision que "il fait plus chaud à l'équateur".
+On peut cependant extraire encore plus d'informations de nos températures moyennes. Et si on voulait voir les zones qui ont la plus grosse augmentation de température ? On peut prendre la température moyenne de 2020 et 2010, et regarder les stations qui ont le plus de différence.
+
+```{r, out.width='100%'}
+temp2020 <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -20, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+  group_by(`WMO ID`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct() %>%
+  rename(recentTemp = Temp)
+
+temp2010 <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -20, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2010-12-01")), `YEAR-MONTH` >= as.Date(as.character("2010-01-01"))) %>%
+  filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+  group_by(`WMO ID`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct() %>%
+  rename(oldTemp = Temp)
+
+anomalies <- right_join(temp2020, temp2010) %>%
+  mutate(`Temp (°C)` = recentTemp - oldTemp) %>%
+  filter(`Temp (°C)` > -4, `Temp (°C)` < 4)
+
+growth_map <- function(angle = 60, pointSize = 4){
+  ggplot() + 
+    geom_jitter(data = anomalies, aes(x = lon, y = lat, color = `Temp (°C)`), size = pointSize, alpha = 0.5) +
+    scale_color_gradient2(low = "#3F94FE", high = "#FF0000") + 
+    geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+    coord_map(xlim=c(-180,180)) + 
+    labs(title = "Evolution des températures moyennes dans le monde depuis 2010")
+}
+
+growth_map()
+```
+
+Même si l'Europe a l'air de prendre assez chère, c'est aussi la zone qui a le plus de stations, ce qui limite les erreurs et augmente le nombre de relevés superposés. De plus, beaucoup de pays manquent de relevés en 2010, comme en Amérique du Sud et en Afrique, ce qui accentue encore la différence de couleur et fait bien ressortir le rouge de l'Europe. C'est néanmoins assez inquiétant, et nous pensions voir une tendance similaire pour les Etat-Unis - à tord. On peut toutefois noter que notre Australie bien aimée est toujours dans les starting blocks de la malaisance.
+
+```{r}
+# saveGIF({
+#  ani.options(nmax = 360)
+#  for(i in seq(0,360)){
+#    print(growth_map(i))
+#    print(i)
+#  }
+#}, interval = 0.1, outdir="./data", movie.name = "growth_world.gif")
+```
 
 
 ##GRAPH DIFFERENCES NORD SUD##
