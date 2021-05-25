@@ -554,7 +554,7 @@ plot <- dataSeeLevelRiseImproved %>%
     # geom_line(aes(y = poseidon, colour = "Poseidon")) +
     # geom_line(aes(y = jason1, colour = "Jason 1")) +
     # geom_line(aes(y = jason2, colour = "Jason 2")) +
-    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) + #Pas de données alors qu'il y en a dans le dataset de base
     labs(title = "Evolution de la quantité de précipitation sur les deux côtes",  colour = "Données" )
 ggplotly(plot)
 
