@@ -13,9 +13,10 @@ library(mapproj)
 library(rnaturalearth)
 library(plotly)
 library(sf)
-library(animation)
+#library(animation)
 data <- read_csv('./data/Meteo_Station.csv')
 dataSeaIce <- read_csv('./data/Sea_Ice.csv')
+dataSeeLevelRise <- read_csv('./data/See_Level_Rise.csv')
 tempColor <- '#ec7c73'
 ```
 
@@ -480,7 +481,6 @@ arcticStations <- polarStations %>%
   filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
   group_by(`YEAR-MONTH`) %>%
   summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`))
-
 reducedDataSeaIce <- dataSeaIceModified %>%
   filter(`Date` <= as.Date(as.character("2020-12-01")), `Date` >= as.Date(as.character("1986-01-01")))
 
@@ -495,7 +495,7 @@ On constate donc qu'il y a en effet une correlation entre la temperature qui aug
 
 En 2018 le Groenland a vécu pour la première fois, la cassure de sa banquise en été révélant des eaux sans glace, phénomène qui n'était jamais arrivé et qui montre bien les première répercussions de cette réduction de la surface de la banquise et les causes de l'augmentation de la température.
 
-https://www.theguardian.com/world/2018/aug/21/arctics-strongest-sea-ice-breaks-up-for-first-time-on-record
+[Article The Guardian sur la banquise du Groenland](https://www.theguardian.com/world/2018/aug/21/arctics-strongest-sea-ice-breaks-up-for-first-time-on-record)
 
 ```{r}
 worldMap <- getMap()
@@ -515,7 +515,7 @@ GreenlandStation <- data %>%
     geom_point(data = GreenlandStation , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color='red')
 ```
 
-Si l'en prend la station météorologique la plus au Nord du Groenland on constate en effet qu'il y a eu en 2018 un pic de température positive en été. 
+Si l'on prend la station météorologique la plus au Nord du Groenland on constate en effet qu'il y a eu en 2018 un pic de température positif en été. 
 
 ```{r, out.width='100%'}
 plot <- GreenlandStation %>%
@@ -525,6 +525,38 @@ plot <- GreenlandStation %>%
   summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`)) +
     geom_line(aes(y = Temp, colour = "Température")) +
-    labs(title = "Evolution de la témparature au nord du Groenland", x = "Date", y = "Température moyenne")
+    labs(title = "Evolution de la température au nord du Groenland", x = "Date", y = "Température moyenne")
 ggplotly(plot)
+```
+
+Afin de déterminer s'il y a une causalité entre la fonte des glaciers et l'eau nous avons choisi de visualiser l'évolution du niveau des eau aux cours des dernières années afin de déterminer une éventuelle conséquence à la fonte des glaciers. 
+
+Pour cela nous avons utilisé les données CSV See_Level_Rise.csv. Ce dataset est un ensemble de relevé depuis 1992 du niveau global des eaux. Les mesures ont été faites par différents radars durant les années. Nous avons réalisé un formatage de la table year qui donnait l'année ainsi que le temps en pourcentage avant la fin de l'année à laquelle à été faite la mesure.
+
+```{r}
+dataSeeLevelRiseImproved <- dataSeeLevelRise %>%
+  separate(year,c("year", "percentMonth"))%>%
+  rename( Jason1 = `Jason-1`, Jason2 = `Jason-2`, Jason3 = `Jason-3`)
+  
+dataSeeLevelRiseImproved$`year` <-as.Date(paste(dataSeeLevelRiseImproved$`year`,"-01-01",sep=""))
+dataSeeLevelRiseImproved$`Jason3` <-as.numeric(dataSeeLevelRiseImproved$`Jason3`)
+tbl_df(dataSeeLevelRiseImproved)
+```
+
+Dans un premier temps on souhaite visualiser l'évolution 
+
+```{r}
+
+plot <- dataSeeLevelRiseImproved %>%
+  group_by(`year`) %>%
+  summarize(poseidon = mean(`TOPEX/Poseidon`), jason1 = mean(`Jason1`), jason2 = mean(`Jason2`), jasonSeaLevel3 = mean(`Jason3`)) %>%
+    ggplot(aes(x = `year`)) +
+    # geom_line(aes(y = poseidon, colour = "Poseidon")) +
+    # geom_line(aes(y = jason1, colour = "Jason 1")) +
+    # geom_line(aes(y = jason2, colour = "Jason 2")) +
+    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    labs(title = "Evolution de la quantité de précipitation sur les deux côtes",  colour = "Données" )
+ggplotly(plot)
+
+```
 ```

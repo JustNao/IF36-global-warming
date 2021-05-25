@@ -1,8 +1,3 @@
-#title = mean sea level anomaly global ocean (66S to 66N) (Annual signals retained) 
-#institution = NOAA/Laboratory for Satellite Altimetry 
-#references = NOAA Sea Level Rise (http://www.star.nesdis.noaa.gov/sod/lsa/SeaLevelRise/) and Radar Altimeter Database System (http://www.deos.tudelft.nl/altim/rads/) 
-#comment = Data use policy: In publications, presentations, or on web pages based on LSA data the following acknowledgment should be included: 'Altimetry data are provided by NOAA Laboratory for Satellite Altimetry.' 
-#trend = 2.96 mm/year (no glacial isostatic adjustment correction) 
 year,TOPEX/Poseidon,Jason-1,Jason-2,Jason-3
 1992.9614,-16.20000,,,
 1992.9865,-17.90000,,,
@@ -313,7 +308,7 @@ year,TOPEX/Poseidon,Jason-1,Jason-2,Jason-3
 2002.0540,5.10000,,,
 2002.0811,3.70000,,,
 2002.0819,,5.71000,,
-2002.1083,-1.60000,6.31000,,
+2002.1083,Poseidon,6.31000,,
 2002.1352,,6.41000,,
 2002.1354,-0.10000,,,
 2002.1626,4.50000,5.01000,,
