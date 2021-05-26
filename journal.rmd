@@ -16,7 +16,7 @@ library(sf)
 #library(animation)
 data <- read_csv('./data/Meteo_Station.csv')
 dataSeaIce <- read_csv('./data/Sea_Ice.csv')
-dataSeeLevelRise <- read_csv('./data/See_Level_Rise.csv')
+dataSeeLevelRise <- read_csv('./data/See_Level_Rise.csv', guess_max= 1256)
 tempColor <- '#ec7c73'
 ```
 
@@ -487,7 +487,7 @@ reducedDataSeaIce <- dataSeaIceModified %>%
 plot <- ggplot() + 
     geom_smooth(data= arcticStations, aes(x = `YEAR-MONTH`, y = Temp, color = "Temperature"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
     geom_smooth(data= reducedDataSeaIce, aes(x = `Date`, y = Area -20, color = "Aire Mkm²"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
-    labs(title = "Evolution de la temparature et de la surface de la banquise en fontion du temps", x = "Date", y = "Température moyenne/Aire en Mkm²", colour = "Données")
+    labs(title = "Evolution de la température et de la surface de la banquise en fontion du temps", x = "Date", y = "Température moyenne/Aire en Mkm²", colour = "Données")
 ggplotly(plot)
 ```
 
@@ -539,24 +539,77 @@ dataSeeLevelRiseImproved <- dataSeeLevelRise %>%
   rename( Jason1 = `Jason-1`, Jason2 = `Jason-2`, Jason3 = `Jason-3`)
   
 dataSeeLevelRiseImproved$`year` <-as.Date(paste(dataSeeLevelRiseImproved$`year`,"-01-01",sep=""))
-dataSeeLevelRiseImproved$`Jason3` <-as.numeric(dataSeeLevelRiseImproved$`Jason3`)
-tbl_df(dataSeeLevelRiseImproved)
+dataSeeLevelRiseImproved$`TOPEX/Poseidon` <-as.numeric(dataSeeLevelRiseImproved$`TOPEX/Poseidon`)
 ```
 
-Dans un premier temps on souhaite visualiser l'évolution 
+Dans un premier temps on souhaite visualiser l'évolution de la montée des eaux depuis 1992 à nos jours. Cette visualisation présente les 4 radars utilisés lors des mesure du niveau d'eau sur les différentes années : 
 
 ```{r}
 
+reducedDataSeaIce <- dataSeaIceModified %>%
+  filter(`Date` <= as.Date(as.character("2020-12-01")), `Date` >= as.Date(as.character("1992-01-01")))
+
 plot <- dataSeeLevelRiseImproved %>%
   group_by(`year`) %>%
-  summarize(poseidon = mean(`TOPEX/Poseidon`), jason1 = mean(`Jason1`), jason2 = mean(`Jason2`), jasonSeaLevel3 = mean(`Jason3`)) %>%
+  summarize(poseidon = mean(`TOPEX/Poseidon`, na.rm = TRUE), jason1 = mean(`Jason1`, na.rm = TRUE), jason2 = mean(`Jason2`, na.rm = TRUE), jasonSeaLevel3 = mean(`Jason3`, na.rm = TRUE)) %>%
     ggplot(aes(x = `year`)) +
-    # geom_line(aes(y = poseidon, colour = "Poseidon")) +
-    # geom_line(aes(y = jason1, colour = "Jason 1")) +
-    # geom_line(aes(y = jason2, colour = "Jason 2")) +
-    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) + #Pas de données alors qu'il y en a dans le dataset de base
-    labs(title = "Evolution de la quantité de précipitation sur les deux côtes",  colour = "Données" )
+    geom_line(aes(y = poseidon, colour = "Poseidon")) +
+    geom_line(aes(y = jason1, colour = "Jason 1")) +
+    geom_line(aes(y = jason2, colour = "Jason 2")) +
+    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    labs(title = "Evolution du niveau globale des eaux",  y="Montée des eaux en mm",colour = "Données" )
 ggplotly(plot)
 
 ```
+
+On constate donc qu'au cours des 30 dernières années , le niveau de l'eau sur la surface de la terre a augmenté de 60 mm. On remarque que l'augmentation du niveau des eaux évolue de manière linéaire qui semble suivre la même allure que l'évolution de la température moyenne au pôle nord.  (représenté un peu plus haut). 
+
+
+Sur le graph ci-dessous afin d'obtenir la même echelle sur le graphique nous avons multiplié l'aire de la banquise avec un coefficient de 5 afin d'avoir la bonne echelle lors de la visualisation. La température a également été multiplié par un coefficient de 10 afin de mettre en evidence la courbe de celle-ci.
+
+```{r}
+
+reducedDataSeaIce <- dataSeaIceModified %>%
+  filter(`Date` <= as.Date(as.character("2020-12-01")), `Date` >= as.Date(as.character("1992-01-01")))
+
+arcticStations <- polarStations %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`))
+
+plot <- dataSeeLevelRiseImproved %>%
+  group_by(`year`) %>%
+  summarize(poseidon = mean(`TOPEX/Poseidon`, na.rm = TRUE), jason1 = mean(`Jason1`, na.rm = TRUE), jason2 = mean(`Jason2`, na.rm = TRUE), jasonSeaLevel3 = mean(`Jason3`, na.rm = TRUE)) %>%
+    ggplot(aes(x = `year`)) +
+    geom_line(aes(y = poseidon, colour = "Poseidon")) +
+    geom_line(aes(y = jason1, colour = "Jason 1")) +
+    geom_line(aes(y = jason2, colour = "Jason 2")) +
+    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    geom_smooth(data= reducedDataSeaIce, aes(x = `Date`, y = Area * 5, color = "Aire Mkm² de la banquise"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(data= arcticStations, aes(x = `YEAR-MONTH`, y = (Temp * 10) + 150 , color = "Température au pôle Nord"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    labs(title = "Evolution du niveau globale des eaux",  y="Montée des eaux en mm",colour = "Données" )
+ggplotly(plot)
+
 ```
+
+En poussant encore un peu plus loin on peut également prédire l'évolution du niveau des eaux dans les prochaines années en effectuant une régression linéaire en prennant une dizaine de point sur la courbe : 
+
+```{r}
+levelPrediction <- data.frame(date = as.Date(c("2020-01-01", "2022-01-01", "2025-01-01","2032-01-01","2041-01-01","2050-01-01")),
+                  level=c(63.9920,70.7338,80.407,102.9778,131.9974,161.017))#Valeurs trouvée via regression lineaire.
+
+plot <- dataSeeLevelRiseImproved %>%
+  group_by(`year`) %>%
+  summarize(poseidon = mean(`TOPEX/Poseidon`, na.rm = TRUE), jason1 = mean(`Jason1`, na.rm = TRUE), jason2 = mean(`Jason2`, na.rm = TRUE), jasonSeaLevel3 = mean(`Jason3`, na.rm = TRUE)) %>%
+    ggplot(aes(x = `year`)) +
+    geom_line(aes(y = poseidon, colour = "Poseidon")) +
+    geom_line(aes(y = jason1, colour = "Jason 1")) +
+    geom_line(aes(y = jason2, colour = "Jason 2")) +
+    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    geom_line(data= levelPrediction, aes(x= date, y = level, colour = "Prédiction"), linetype = "dashed") +
+    labs(title = "Evolution du niveau globale des eaux",  y="Montée des eaux en mm",colour = "Données" )
+ggplotly(plot)
+
+```
+
+On peut alors prédire par exemple l'année où Venise sera submergé par le niveau des eaux. Venise étant à seulement 1,30 m au dessus du niveau de la mer, il est probable qu'en 2040 Venise soit définitivement submergé.
