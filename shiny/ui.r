@@ -1,8 +1,7 @@
-## ui.R ##
 library(shinydashboard)
 
 dashboardPage(
-  dashboardHeader( title = "Star Wars"),
+  dashboardHeader( title = "Stations météos"),
   dashboardSidebar(
     sidebarMenu(
       menuItem("Stats", tabName = "stats", icon = icon("th")),
@@ -14,11 +13,9 @@ dashboardPage(
     # First tab content
     tabItem(tabName = "stats",
             fluidRow(
-              valueBoxOutput("boxeFixe"),
+              valueBoxOutput("nbReleves"),
               
-              valueBoxOutput("nbIndividusBox"),
-              
-              valueBoxOutput("dimensions")
+              valueBoxOutput("nbStations")
             ),
             
             fluidRow(
