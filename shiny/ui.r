@@ -19,11 +19,11 @@ dashboardPage(
             ),
             
             fluidRow(
-              infoBoxOutput("avgHeight"),
-              
-              infoBoxOutput("medianMass"),
-              
-              
+              plotOutput("worldTemperatureGrowth")
+            ),
+            
+            fluidRow(
+              sliderInput("yearSlider", "Année", 1990, 2019, 2000, sep = "")
             )
     )
   )
