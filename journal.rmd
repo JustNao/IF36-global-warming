@@ -606,10 +606,12 @@ plot <- dataSeeLevelRiseImproved %>%
     geom_line(aes(y = jason1, colour = "Jason 1")) +
     geom_line(aes(y = jason2, colour = "Jason 2")) +
     geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    geom_vline(xintercept = as.numeric(as.Date('2041-01-01')), linetype="dashed", color="red")+
+    geom_hline(yintercept = 131, show.legend = "131", linetype="dashed", color="red")+
     geom_line(data= levelPrediction, aes(x= date, y = level, colour = "Prédiction"), linetype = "dashed") +
     labs(title = "Evolution du niveau globale des eaux",  y="Montée des eaux en mm",colour = "Données" )
 ggplotly(plot)
 
 ```
 
-On peut alors prédire par exemple l'année où Venise sera submergé par le niveau des eaux. Venise étant à seulement 1,30 m au dessus du niveau de la mer, il est probable qu'en 2040 Venise soit définitivement submergé.
+On peut alors prédire par exemple l'année où Venise sera submergé par le niveau des eaux. Venise étant à seulement 1,30 m au dessus du niveau de la mer, il est probable qu'en 2041 Venise soit définitivement submergé.
