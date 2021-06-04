@@ -26,12 +26,18 @@ world.df <- world.points[,c("long","lat","group", "region")]
 #################
 
 server <- function(input, output) {
-  selectedYear <- reactive({
-    input$yearSlider
+  page1SelectedYear <- reactive({
+    input$page1YearSlider
   })
   
+  page2SelectedYear <- reactive({
+    input$page2YearSlider
+  })
+  
+  ##------- Page 1 -------## 
+  
   meanTempFromYear <- reactive({
-    year <- input$yearSlider
+    year <- input$page1YearSlider
     yearStart <- paste(year, "-01-01", sep = "")
     yearEnd <- paste(year + 1, "-01-01", sep = "")
     data %>%
@@ -44,7 +50,7 @@ server <- function(input, output) {
   })
   
   tempGrowthFromYear <- reactive({
-    year <- input$yearSlider
+    year <- input$page1YearSlider
     firstYearStart <- paste(year, "-01-01", sep = "")
     firstYearEnd <- paste(year, "-12-01", sep = "")
     secondYearStart <- paste(year + 1, "-01-01", sep = "")
@@ -96,7 +102,7 @@ server <- function(input, output) {
   })
   
   output$worldTemperatureGrowth <- renderPlot({
-    year <- selectedYear()
+    year <- page1SelectedYear()
     ggplot() + 
       geom_jitter(data = tempGrowthFromYear(), aes(x = lon, y = lat, color = `Temp (°C)`), size = 4, alpha = 0.5) +
       scale_color_gradient2(low = "#3F94FE", high = "#FF0000") + 
@@ -105,4 +111,51 @@ server <- function(input, output) {
       labs(title = paste("Evolution des températures moyennes dans le monde entre ", year, " et ", year + 1, sep = ""))
   })
   
+  ##------- Page 2 -------## 
+  
+  output$page2NbReleves <- renderValueBox({
+    year <- page2SelectedYear()
+    yearStart <- paste(year, "-01-01", sep = "")
+    yearEnd <- paste(year + 1, "-01-01", sep = "")
+    valueBox(count(
+      data %>%
+        filter(`YEAR-MONTH` >= yearStart, `YEAR-MONTH` < yearEnd)
+      ), "Relevés", icon = icon("list"), color = "red")
+  })
+  
+  output$page2NbStations <- renderValueBox({
+    year <- page2SelectedYear()
+    yearStart <- paste(year, "-01-01", sep = "")
+    yearEnd <- paste(year + 1, "-01-01", sep = "")
+    valueBox(count(
+      data %>%
+        filter(`YEAR-MONTH` >= yearStart, `YEAR-MONTH` < yearEnd) %>%
+        distinct(`WMO ID`)
+    ), "Stations", icon = icon("bars"), color = "yellow")
+  })
+  
+  releves <- reactive({
+    year <- input$page2YearSlider
+    yearStart <- paste(year, "-01-01", sep = "")
+    yearEnd <- paste(year + 1, "-01-01", sep = "")
+    data %>%
+      filter(`YEAR-MONTH` >= yearStart, `YEAR-MONTH` < yearEnd) %>%
+      filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+      group_by(`WMO ID`) %>%
+      summarize(count = n(), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+      distinct()
+  })
+  
+  output$worldRelevesCount <- renderPlot({
+    releves <- releves()
+    ggplot() + 
+      geom_jitter(data = releves, aes(x = lon, y = lat, color = count), size = 1.5, alpha = 0.5) +
+      scale_color_gradient(low = "white", high = "blue") +
+      geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+      scale_y_continuous(breaks = (-2:2) * 30) +
+      scale_x_continuous(breaks = (-4:4) * 45) +
+      coord_map(xlim=c(-180,180)) + 
+      labs(title = "Nombres de relevés par station")
+    
+  })
 }

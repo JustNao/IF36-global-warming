@@ -4,27 +4,43 @@ dashboardPage(
   dashboardHeader( title = "Stations météos"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Stats", tabName = "stats", icon = icon("th")),
-      menuItem("Graphiques", tabName = "graph", icon = icon("chart-bar")),
-      sliderInput("slide", "Nb individus", 1, 82, 10)
+      menuItem("Evolution", tabName = "Evolution", icon = icon("th")),
+      menuItem("Stations", tabName = "Stations", icon = icon("chart-bar"))
     )
   ),
   dashboardBody(
     # First tab content
-    tabItem(tabName = "stats",
-            fluidRow(
-              valueBoxOutput("nbReleves"),
+    tabItems(
+      tabItem(tabName = "Evolution",
+              fluidRow(
+                valueBoxOutput("nbReleves"),
+                
+                valueBoxOutput("nbStations")
+              ),
               
-              valueBoxOutput("nbStations")
-            ),
-            
-            fluidRow(
-              plotOutput("worldTemperatureGrowth")
-            ),
-            
-            fluidRow(
-              sliderInput("yearSlider", "Année", 1990, 2019, 2000, sep = "")
-            )
+              fluidRow(
+                plotOutput("worldTemperatureGrowth")
+              ),
+              
+              fluidRow(
+                sliderInput("page1YearSlider", "Année", 1990, 2019, 2000, sep = "")
+              )
+      ),
+      tabItem(tabName = "Stations",
+              fluidRow(
+                valueBoxOutput("page2NbReleves"),
+                
+                valueBoxOutput("page2NbStations")
+              ),
+              
+              fluidRow(
+                plotOutput("worldRelevesCount")
+              ),
+              
+              fluidRow(
+                sliderInput("page2YearSlider", "Année", 1990, 2019, 2000, sep = "")
+              )
+      )
     )
   )
 )
