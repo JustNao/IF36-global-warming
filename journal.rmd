@@ -212,6 +212,31 @@ ggplotly(plot)
 Le résultat obtenu est assez satisfaisant, étant donnée notre technique de duplication des relevés un peu approximative.
 On se rapproche plus d'une moyenne entre les deux hémisphères, même si le côté Nord se fait encore assez ressentir.
 
+Pour compléter ce point, nous avons réalisé un graphique sur Shiny représentant les différentes stations dans le monde, et le nombre de relevés par station (représenté par la couleur) pour une année donnée - que l'on choisit avec un slider.
+
+```{r, out.width='100%'}
+releves <- data %>%
+  # filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2019-01-01"))) %>%
+  filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+  group_by(`WMO ID`) %>%
+  summarize(count = n(), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct()
+
+releves_world_map <- function(pointSize = 1.5){
+  ggplot() + 
+    geom_jitter(data = releves, aes(x = lon, y = lat, color = count), size = pointSize, alpha = 0.5) +
+    scale_color_gradient(low = "white", high = "blue") +
+    geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map(xlim=c(-180,180)) + 
+    labs(title = "Nombres de relevés par station")
+}
+
+releves_world_map()
+```
+
+
 ### Etude spécifique de l'Australie
 
 On va maintenant s'intéresser uniquement à l'Australie, et plus particulièrement ses feux.
@@ -392,6 +417,7 @@ growth_map()
 ```
 
 Même si l'Europe a l'air de prendre assez chère, c'est aussi la zone qui a le plus de stations, ce qui limite les erreurs et augmente le nombre de relevés superposés. De plus, beaucoup de pays manquent de relevés en 2010, comme en Amérique du Sud et en Afrique, ce qui accentue encore la différence de couleur et fait bien ressortir le rouge de l'Europe. C'est néanmoins assez inquiétant, et nous pensions voir une tendance similaire pour les Etat-Unis - à tord. On peut toutefois noter que notre Australie bien aimée est toujours dans les starting blocks de la malaisance.
+Nous avons intégré ce graphique dans notre application Shiny, permettant de choisir une année en particulier (si on choisit 2010, on aura la différence de température entre 2010 et 2011).
 
 ```{r}
 # saveGIF({
