@@ -541,12 +541,12 @@ GreenlandStation <- data %>%
     geom_point(data = GreenlandStation , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color='red')
 ```
 
-Si l'on prend la station météorologique la plus au Nord du Groenland on constate en effet qu'il y a eu en 2018 un pic de température positif en été. 
+Si l'on prend la station météorologique la plus au Nord du Groenland on constate en effet qu'il y a eu en 2018 des températures minimales qui ont été beaucoup plus grande qu'à l'ordinaire dans la même période.
 
 ```{r, out.width='100%'}
 plot <- GreenlandStation %>%
   filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
-  filter(`YEAR-MONTH` <= as.Date(as.character("2019-01-01")), `YEAR-MONTH` >= as.Date(as.character("2018-01-01"))) %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2019-01-01")), `YEAR-MONTH` >= as.Date(as.character("2010-01-01"))) %>%
   group_by(`YEAR-MONTH`) %>%
   summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`)) +
@@ -618,7 +618,7 @@ ggplotly(plot)
 
 ```
 
-En poussant encore un peu plus loin on peut également prédire l'évolution du niveau des eaux dans les prochaines années en effectuant une régression linéaire en prennant une dizaine de point sur la courbe : 
+En poussant encore un peu plus loin on peut également prédire l'évolution du niveau des eaux dans les prochaines années en effectuant une régression linéaire en prennant une dizaine de point à différents endroits de la courbe : 
 
 ```{r}
 levelPrediction <- data.frame(date = as.Date(c("2020-01-01", "2022-01-01", "2025-01-01","2032-01-01","2041-01-01","2050-01-01")),
