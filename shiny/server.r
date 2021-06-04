@@ -147,6 +147,7 @@ server <- function(input, output) {
   })
   
   output$worldRelevesCount <- renderPlot({
+    year <- page2SelectedYear()
     releves <- releves()
     ggplot() + 
       geom_jitter(data = releves, aes(x = lon, y = lat, color = count), size = 1.5, alpha = 0.5) +
@@ -155,7 +156,7 @@ server <- function(input, output) {
       scale_y_continuous(breaks = (-2:2) * 30) +
       scale_x_continuous(breaks = (-4:4) * 45) +
       coord_map(xlim=c(-180,180)) + 
-      labs(title = "Nombres de relevés par station")
+      labs(title = paste("Nombres de relevés par station entre ", year, " et ", year + 1, sep = ""))
     
   })
 }
