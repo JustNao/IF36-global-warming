@@ -45,7 +45,7 @@ plot <- firstStation %>%
   filter(`MEAN TEMPERATURE (deg C)` < 800, `MEAN TEMPERATURE (deg C)` > -800) %>%
   ggplot(aes(x = firstStation$`YEAR-MONTH`, y = firstStation$`MEAN TEMPERATURE (deg C)`)) + 
   geom_line(color = tempColor) +
-  labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne")
+  labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne (°C)")
 ggplotly(plot)
 ```
 
@@ -57,7 +57,7 @@ plot <- firstStation %>%
   ggplot(aes(x = firstStation$`YEAR-MONTH`, y = firstStation$`MEAN TEMPERATURE (deg C)`)) + 
   geom_line(color = tempColor) + 
   geom_smooth(method = 'loess', formula = 'y ~ x', se=F) +
-  labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne")
+  labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne (°C)")
 ggplotly(plot)
 ```
 On vient donc de démontrer le réchauffement climatique.
@@ -110,7 +110,7 @@ plot <- franceStations %>%
   summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
     geom_smooth(method = 'loess', formula = 'y ~ x') +
-    labs(title = "Evolution de la température moyenne en France", x = "Date", y = "Température moyenne")
+    labs(title = "Evolution de la température moyenne en France", x = "Date", y = "Température moyenne (°C)")
 ggplotly(plot)
 ```
 
@@ -126,7 +126,7 @@ plot <- franceStations %>%
     ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
     geom_line(color = tempColor) +
     geom_hline(yintercept = 27.5, linetype = "dotted", colour= 'red') +
-    labs(title = "Evolution de la température maximale en France", x = "Date", y = "Température maximale moyenne")
+    labs(title = "Evolution de la température maximale en France", x = "Date", y = "Température maximale moyenne (°C)")
 ggplotly(plot)
 ```
 
@@ -166,7 +166,7 @@ plot <- data %>%
     geom_smooth(aes(y = franceTemp$temp, color = "France"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
     geom_smooth(aes(y = australiaTemp$temp, color = "Australia"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
     ylim(0, 30) + 
-    labs(title = "Evolution de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne", colour = "Données")
+    labs(title = "Evolution de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne (°C)", colour = "Données")
 ggplotly(plot)
 ```
 
@@ -205,7 +205,7 @@ plot <- bind_rows(data, southStations, southStations, southStations[0:as.numeric
     geom_smooth(aes(y = franceTemp$temp, color = "France"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
     geom_smooth(aes(y = australiaTemp$temp, color = "Australia"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
     ylim(0, 30) + 
-    labs(title = "Evolution de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne", colour = "Données")
+    labs(title = "Evolution corrigée de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne (°C)", colour = "Données")
 ggplotly(plot)
 ```
 
@@ -258,7 +258,7 @@ plot <- australiaTemp %>%
   geom_line(aes(y = temp, colour = "Temp")) +
   geom_line(aes(y = rain/coeff + 20, colour = "Rain")) +
   geom_vline(xintercept = as.numeric(as.Date('2019-05-01')), linetype = "dotted", colour= 'red') +
-  labs(title = "Evolution des températures et précipitations en Australie", colour = "Données" )
+  labs(title = "Evolution des températures et précipitations en Australie", colour = "Données", x = "Date", y = "Température moyenne (°C)")
 ggplotly(plot)
 ```
 
@@ -288,7 +288,7 @@ plot <- australiaWestTemp %>%
   ggplot(aes(x = `YEAR-MONTH`)) + 
   geom_line(aes(y = temp, colour = "West")) +
   geom_line(aes(y = australiaEstTemp$temp, colour = "East")) +
-  labs(title = "Evolution de la température sur les deux côtes", colour = "Données" )
+  labs(title = "Evolution de la température sur les deux côtes", colour = "Données", x = "Date", y = "Température moyene  (°C)")
 ggplotly(plot)
 ```
 
@@ -299,7 +299,7 @@ plot <- australiaWestTemp %>%
   ggplot(aes(x = `YEAR-MONTH`)) + 
   geom_line(aes(y = rain, colour = "West")) +
   geom_line(aes(y = australiaEstTemp$rain, colour = "East")) +
-  labs(title = "Evolution de la quantité de précipitation sur les deux côtes",  colour = "Données" )
+  labs(title = "Evolution de la quantité de précipitation sur les deux côtes",  colour = "Données", x = "Date", y = "Précipitation (mm)" )
 ggplotly(plot)
 ```
 
@@ -462,7 +462,7 @@ plot <- polarStations %>%
   summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
     geom_smooth(method = 'loess', formula = 'y ~ x') +
-    labs(title = "Evolution de la température moyenne au pôle nord", x = "Date", y = "Température moyenne")
+    labs(title = "Evolution de la température moyenne au pôle nord", x = "Date", y = "Température moyenne (°C)")
 ggplotly(plot)
 ```
 
@@ -551,7 +551,7 @@ plot <- GreenlandStation %>%
   summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
     ggplot(aes(x = `YEAR-MONTH`)) +
     geom_line(aes(y = Temp, colour = "Température")) +
-    labs(title = "Evolution de la température au nord du Groenland", x = "Date", y = "Température moyenne")
+    labs(title = "Evolution de la température au nord du Groenland", x = "Date", y = "Température moyenne (°C)")
 ggplotly(plot)
 ```
 
