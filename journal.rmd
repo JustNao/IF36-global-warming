@@ -406,7 +406,7 @@ anomalies <- right_join(temp2020, temp2010) %>%
 
 growth_map <- function(angle = 60, pointSize = 4){
   ggplot() + 
-    geom_jitter(data = anomalies, aes(x = lon, y = lat, color = `Temp (°C)`), size = pointSize, alpha = 0.5) +
+    geom_jitter(data = anomalies, aes(x = lon, y = lat, color = `Temp (°C)`), size = pointSize, alpha = 0.4) +
     scale_color_gradient2(low = "#3F94FE", high = "#FF0000") + 
     geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
     coord_map(xlim=c(-180,180)) + 
