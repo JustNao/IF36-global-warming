@@ -80,14 +80,14 @@ server <- function(input, output) {
   })
   
   output$nbReleves <- renderValueBox({
-    valueBox(count(data), "Relevés", icon = icon("list"), color = "red")
+    valueBox(count(data), "Relevés", icon = icon("temperature-high"), color = "red")
   })
   
   output$nbStations <- renderValueBox({
     valueBox(count(
       data %>%
         distinct(`WMO ID`)
-      ), "Stations", icon = icon("bars"), color = "yellow")
+      ), "Stations", icon = icon("flag"), color = "yellow")
   })
   
   output$worldMeanTemperature <- renderPlot({
@@ -120,7 +120,7 @@ server <- function(input, output) {
     valueBox(count(
       data %>%
         filter(`YEAR-MONTH` >= yearStart, `YEAR-MONTH` < yearEnd)
-      ), "Relevés", icon = icon("list"), color = "red")
+      ), "Relevés", icon = icon("temperature-high"), color = "red")
   })
   
   output$page2NbStations <- renderValueBox({
@@ -131,7 +131,7 @@ server <- function(input, output) {
       data %>%
         filter(`YEAR-MONTH` >= yearStart, `YEAR-MONTH` < yearEnd) %>%
         distinct(`WMO ID`)
-    ), "Stations", icon = icon("bars"), color = "yellow")
+    ), "Stations", icon = icon("flag"), color = "yellow")
   })
   
   releves <- reactive({

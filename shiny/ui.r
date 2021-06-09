@@ -13,9 +13,9 @@ dashboardPage(
     tabItems(
       tabItem(tabName = "Evolution",
               fluidRow(
-                valueBoxOutput("nbReleves"),
+                valueBoxOutput("nbReleves", 6),
                 
-                valueBoxOutput("nbStations")
+                valueBoxOutput("nbStations", 6)
               ),
               
               fluidRow(
@@ -23,14 +23,16 @@ dashboardPage(
               ),
               
               fluidRow(
-                sliderInput("page1YearSlider", "Année", 1990, 2019, 2000, sep = "")
+                div(style = "margin: auto; width: 80%",
+                  sliderInput("page1YearSlider", "Année", 1990, 2019, 2000, sep = "", width = '100%')
+                )
               )
       ),
       tabItem(tabName = "Stations",
               fluidRow(
-                valueBoxOutput("page2NbReleves"),
+                valueBoxOutput("page2NbReleves", 6),
                 
-                valueBoxOutput("page2NbStations")
+                valueBoxOutput("page2NbStations", 6)
               ),
               
               fluidRow(
@@ -38,8 +40,11 @@ dashboardPage(
               ),
               
               fluidRow(
-                sliderInput("page2YearSlider", "Année", 1990, 2019, 2000, sep = "")
+                div(style = "margin: auto; width: 80%",
+                    sliderInput("page2YearSlider", "Année", 1990, 2019, 2000, sep = "", width = '100%')
+                )
               )
+              
       )
     )
   )
