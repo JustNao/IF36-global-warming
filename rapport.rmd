@@ -535,6 +535,8 @@ Il est alors intéréssant de croiser ces données avec nos mesures préalableme
 
 Afin de rapprocher les deux courbes pour mieux visualiser l'évolution au cours des ans nous avons réduit l'échelle de valeur de la surface en MKm en soustraillant "- 20" aux valeurs.
 
+Afin de pouvoir comparer encore mieux la température avec la surface de la banquise nous avons crée deux graphiques interactifs sur Shiny pour avoir un visuel au bonnes echelles de l'évolution de ces deux paramètres en fonction des années. (Voir Shiny - Pôle Nord)
+
 ```{r warning=FALSE, out.width='100%'}
 
 arcticStations <- polarStations %>%
