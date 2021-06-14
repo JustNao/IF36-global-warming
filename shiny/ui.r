@@ -5,7 +5,8 @@ dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Evolution", tabName = "Evolution", icon = icon("th")),
-      menuItem("Stations", tabName = "Stations", icon = icon("chart-bar"))
+      menuItem("Stations", tabName = "Stations", icon = icon("chart-bar")),
+      menuItem("Pôle Nord", tabName = "PôleNord", icon = icon("snowman"))
     )
   ),
   dashboardBody(
@@ -42,6 +43,21 @@ dashboardPage(
               fluidRow(
                 div(style = "margin: auto; width: 80%",
                     sliderInput("page2YearSlider", "Année", 1990, 2019, 2000, sep = "", width = '100%')
+                )
+              )
+              
+      ),
+      tabItem(tabName = "PôleNord",
+              fluidRow(
+                column(12, align="center",
+                  plotOutput("poleNordTemperature", width='50%'),
+                  plotOutput("poleNordSeaIce", width='50%')
+                )
+              ),
+              
+              fluidRow(
+                div(style = "margin: auto; width: 80%",
+                    sliderInput("page3YearSlider", "Année", 1980, 2020, 2000, sep = "", width = '100%')
                 )
               )
               

@@ -23,6 +23,17 @@ world.points <- fortify(worldMap)
 world.points$region <- world.points$id
 world.df <- world.points[,c("long","lat","group", "region")]
 
+# Formatage données banquise #
+
+dataSeaIceModified <- dataSeaIce %>%
+  select(-X14) %>%
+  gather(key = "Month",value = "Area",-X1,-Annual ) %>%
+  unite("Date", X1, Month, sep = "-", remove = TRUE)
+dataSeaIceModified$`Date` <- paste(dataSeaIceModified$`Date`,"01",sep="-")
+dataSeaIceModified$`Date` <- as.Date(format(parse_date(dataSeaIceModified$`Date`,"%Y-%B-%d",locale=locale("en")),"%Y-%m-%d"))
+dataSeaIceModified$`Area` <- (dataSeaIceModified$`Area`)/1000
+dataSeaIceModified$`Annual` <- (dataSeaIceModified$`Annual`)/1000
+
 #################
 
 server <- function(input, output) {
@@ -33,6 +44,11 @@ server <- function(input, output) {
   page2SelectedYear <- reactive({
     input$page2YearSlider
   })
+  
+  page3SelectedYear <- reactive({
+    input$page3YearSlider
+  })
+  
   
   ##------- Page 1 -------## 
   
@@ -159,4 +175,64 @@ server <- function(input, output) {
       labs(title = paste("Nombres de relevés par station entre ", year, " et ", year + 1, sep = ""))
     
   })
+  
+  ##------- Page 3 -------## 
+  
+  output$page3NbReleves <- renderValueBox({
+    year <- page3SelectedYear()
+    yearEnd <- paste(year, "-01-01", sep = "")
+    valueBox(count(
+      data %>%
+        filter(`LONGITUDE (deg)` < 180,  `LATITUDE (deg)` > 75) %>%
+        filter( `YEAR-MONTH` <= yearEnd)
+    ), "Relevés", icon = icon("temperature-high"), color = "red")
+  })
+  
+  output$page3NbStations <- renderValueBox({
+    year <- page3SelectedYear()
+    yearEnd <- paste(year, "-01-01", sep = "")
+    valueBox(count(
+      data %>%
+        filter(`LONGITUDE (deg)` < 180,  `LATITUDE (deg)` > 75) %>%
+        filter(`YEAR-MONTH` <= yearEnd) %>%
+        distinct(`WMO ID`)
+    ), "Stations", icon = icon("flag"), color = "yellow")
+  })
+  
+  relevesPoleNord <- reactive({
+    year <- input$page3YearSlider
+    yearEnd <- paste(year, "-01-01", sep = "")
+    data %>%
+      filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>%
+      filter(`LONGITUDE (deg)` < 180,  `LATITUDE (deg)` > 75) %>%
+      filter( `YEAR-MONTH` >= '1980-01-01', `YEAR-MONTH` <= yearEnd) %>%
+      group_by(`YEAR-MONTH`) %>%
+      summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`))
+  })
+  
+  output$poleNordTemperature <- renderPlot({
+    year <- page3SelectedYear()
+    relevesPoleNord <- relevesPoleNord()
+    ggplot(data = relevesPoleNord, aes(x = `YEAR-MONTH`, y = Temp)) + 
+      geom_smooth(method = 'loess', formula = 'y ~ x') +
+      labs(title = "Evolution de la température moyenne au pôle nord", x = "Date", y = "Température moyenne (°C)")
+    
+  })
+  
+  relevesSeaIce <- reactive({
+    year <- input$page3YearSlider
+    yearEnd <- paste(year, "-01-01", sep = "")
+    dataSeaIceModified %>%
+      filter( `Date` >= '1980-01-01',`Date` <= yearEnd)
+  })
+  
+  output$poleNordSeaIce <- renderPlot({
+    year <- page3SelectedYear()
+    relevesSeaIce <- relevesSeaIce()
+    ggplot(data= relevesSeaIce, aes(x = `Date`, y = `Area`)) + 
+      geom_smooth(method = 'loess', formula = 'y ~ x') +
+      labs(title = "Evolution de la surface de la banquise en fonction du temps", x = "Date", y = "Aire en Mkm²")
+    
+  })
+ 
 }
