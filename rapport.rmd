@@ -1,0 +1,702 @@
+---
+title: "Réchauffement climatique - Fargo"
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+
+```{r, include=FALSE}
+library(tidyverse)
+library(rworldmap)
+library(geosphere)
+library(gpclib)
+library(mapproj)
+library(rnaturalearth)
+library(plotly)
+library(sf)
+library(tufte)
+data <- read_csv('./data/Meteo_Station.csv')
+dataSeaIce <- read_csv('./data/Sea_Ice.csv')
+dataSeeLevelRise <- read_csv('./data/See_Level_Rise.csv', guess_max= 1256)
+tempColor <- '#ec7c73'
+```
+
+# Introduction
+
+## Données
+
+Les données que nous avons choisi sont constituées de deux datasets :
+- des relevés de stations météo réparties sur toute la surface du globe, depuis la fin des années 80
+- la surface de glace dans les océans, pendant la même période
+- le niveau global des océans depuis les années 1992
+
+Plusieurs points nous ont fait décider d'aborder ce thème du réchauffement climatique : notre intérêt personnel sur le sujet, son importance dans notre vie de tous les jours, … De plus, c'est un sujet qui concerne de plus en plus de gens , ce qui facilite la compréhension des analyses. La découverte du premier dataset et sa qualité n'a fait que cimenter l'idée.
+Les données de station météo proviennent de la **NCEI** (National Centers for Environmental Information), qui est un des leaders mondiaux dans la distribution gratuite de données sur le climat. Le dataset comprend 833,189 entrées distinctes, avec un total de 36 variables. Ces variables peuvent être regroupées selon : **station** (longitude, latitude, élévation, nom, …) concernée, **pression** (au niveau de la mer et pression de vapeur d'eau), **température** (moyenne, min, max), **précipitation** (nb de jours, total, moyenne, …), **durée de jour**. Toutes les données sont regroupées dans un fichier sous forme CSV.
+  
+Le deuxième dataset sur la surface de glace a été jugé intéressant pour compléter le premier dataset, en ajoutant une nouvelle variable de comparaison plus globale. Ces données proviennent de la **NSIDC** (National Snow and Ice Data Center). Ce dataset est composé d'une seule donnée : la surface de glace mesurée pendant un mois donné. Les entrées remontent au début des années 80, et sont séparées en 4 sous-groupes, selon la localisation (hémisphère nord ou sud) et le type (surface ou étendue). On espère que ce dataset permettra d'ajouter un aspect plus réel à notre analyse.
+
+Le dernier dataset représente les données mesurées depuis 3 satellites différents du niveau des eaux autour du globe. Ces données proviennent de la NESDIS (National Environmental Satellite, Data, and Information Service) , elle contient  1662 données concernant le niveau des eaux en millimètres. ainsi que la date correspondante. Les mesures sont effectuées plusieurs fois par an (environ 29 fois). 
+Avec ce dataset nous souhaitons montrer l’effet de la fonte des glaces sur le niveau des océans.
+	
+La grande majorité des données sont numériques (des longitudes, des températures, ...). Chaque observation est accompagnée d'une date. Certaines variables sont des flags (constituées de quelques caractères), et nous disposons aussi du nom des stations en string.
+
+## Plan d'analyse
+
+Ces données nous permettront de répondre à travers la visualisation à plusieurs questions. En effet, le réchauffement climatique est de plus en plus préoccupant et nous souhaitons savoir si son évolution a pu diminuer au cours des dernières années par rapport au début du siècle. Pour cela nous comptons corréler plusieurs paramètres afin de visualiser les évolutions des différents éléments tels que la température mesurée dans les différentes stations du monde, les précipitations et la pression. Ces données nous permettront de nous rendre plus facilement compte de l’évolution du climat dans le monde et d’en tirer également des conclusions sur les impacts environnementaux que nous subissons actuellement et à anticiper l’évolution future du climat.
+
+On pourrait alors réaliser une visualisation avec l’évolution du climat en fonction des zones géographiques.
+
+Cette évolution nous permettrait aussi de prévoir et anticiper les prochaines zones géographiques qui seront touchées par de nouveaux phénomènes naturels tels que la montée des eaux, la sécheresse …
+
+Afin de nous rendre compte des conséquences de cette évolution nous avons voulu corréler notre dataset avec la fonte de la banquise en fonction du climat. Il y aura surement un travail de mise en relation à faire entre les deux datasets qui pourrait aussi poser problème dans la visualisation des données, étant donné que les datasets n’ont pas les mêmes fréquences de mesure. Nous espérons que cette corrélation nous permettra de tirer des conclusions sur d'autres variables réelles,  comme la montée du niveau de la mer. 
+
+# Exploration
+
+Le dataset étant assez conséquent, nous avons procédé par étape.
+Tout d'abord, quelques lignes n'ont pas été importées d'une manière utilisable. Nous les avons donc converti dans une unité qui nous convenait (caractères pour les flags par exemple). Pour les dates, nous avons utilisé le format Date, qui nécessite un jour. Or, nos données ne contiennent que le mois et l'année. On a donc placé toutes les dates au premier jour du mois.
+
+```{r, include=FALSE}
+data$`YEAR-MONTH` <- as.Date(paste(data$`YEAR-MONTH`,"-01",sep=""))
+data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG` <- as.character(data$`MEAN SEA LEVEL PRESSURE HEIGHT FLAG`)
+data$`MAXIMUM TEMPERATURE (deg C)` <- (data$`MAXIMUM TEMPERATURE (deg C)`)/10
+data$`MINIMUM TEMPERATURE (deg C)` <- (data$`MINIMUM TEMPERATURE (deg C)`)/10
+data$`MEAN TEMPERATURE (deg C)` <- (data$`MEAN TEMPERATURE (deg C)`)/10
+head(data)
+```
+
+## Première station
+
+On a ensuite voulu voir un peu la qualité de nos données. Après un affichage des premières stations pour vérifier que les variables avaient une bonne tête, nous avons isolé la première station affichée grâce à son ID : 01001. Avec ça, on a pu représenter l'évolution des températures moyennes à cette station (pendant la période des relevés). Un premier filtre a du être réalisé sur les données (qui d'ailleurs sera appliqué sur presque chaque graphe suivant), pour enlever les relevés qui n'ont pas de valeur. Par défaut, notre dataset nous informe de cette absence en mettant la valeur à soit 9999, soit -9999. On a donc gardé les valeurs qui étaient entre -800 °C et 800 °C (choix totalement arbitraire).
+
+```{r, out.width='100%'}
+firstStation <- data %>% filter(`WMO ID` == '01001')
+
+plot <- firstStation %>%
+  filter(`MEAN TEMPERATURE (deg C)` < 800, `MEAN TEMPERATURE (deg C)` > -800) %>%
+  ggplot(aes(x = firstStation$`YEAR-MONTH`, y = firstStation$`MEAN TEMPERATURE (deg C)`)) + 
+  geom_line(color = tempColor) +
+  labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne (°C)")
+ggplotly(plot)
+```
+
+Une première représentation avec un geom_line() nous rappelle que les saisons existent. Il nous faut donc une représentation plus stable sur l'année. On peut même garder la première représentation et juste ajouter une moyenn pour y voir plus claire.
+
+```{r, out.width='100%'}
+plot <- firstStation %>%
+  filter(`MEAN TEMPERATURE (deg C)` < 800, `MEAN TEMPERATURE (deg C)` > -800) %>%
+  ggplot(aes(x = firstStation$`YEAR-MONTH`, y = firstStation$`MEAN TEMPERATURE (deg C)`)) + 
+  geom_line(color = tempColor) + 
+  geom_smooth(method = 'loess', formula = 'y ~ x', se=F) +
+  labs(title = "Evolution de la température pour notre première station", x = "Date", y = "Température moyenne (°C)")
+ggplotly(plot)
+```
+On vient donc de démontrer le réchauffement climatique.
+
+Plus sérieusement, en prenant une première station au hasard, on voit déjà que la température moyenne a augmenté de plus de 2 °C pendant les dernières années, faisant même dépasser la barre des 0 °C moyens de la station.
+Cette dernière donnée est d'ailleurs assez étonnante. Où est-ce que notre première station peut bien être ?
+
+```{r include=FALSE}
+worldMap <- getMap()
+world.points <- fortify(worldMap)
+world.points$region <- world.points$id
+
+world.df <- world.points[,c("long","lat","group", "region")]
+```
+
+```{r echo=FALSE}
+ggplot() + 
+  geom_polygon(data = world.df, aes(x = long, y = lat, group = group)) +
+  scale_y_continuous(breaks = (-2:2) * 30) +
+  scale_x_continuous(breaks = (-4:4) * 45) +
+  coord_map("ortho", orientation=c(50, -20, 0)) +
+  geom_point(aes(x = -8.67, y = 70.9), color='red') +
+  labs(title = "Position de notre première station")
+```
+
+Les conditions y sont un peu extrêmes, donc on va chercher des stations plus proches de chez nous. Cela nous permettra en plus de s'assurer que notre dataset a des relevés bien répartis.
+
+## France
+
+A vue de nez, on va situer la France dans une longitude entre -4.5 et 7, et dans une latitude entre 42.7 et 50.7, pour filtrer toutes nos stations.
+On va ensuite les grouper par ID pour avoir une seule donnée par station.
+
+```{r}
+franceStations <- data %>% 
+  filter(`LONGITUDE (deg)` > -4.5, `LONGITUDE (deg)` < 7, `LATITUDE (deg)` > 42.7, `LATITUDE (deg)` < 50.7)
+
+franceStationsPos <- franceStations %>% distinct(`WMO ID`, .keep_all = TRUE)
+worldmap <- ne_countries(scale = 'medium', type = 'map_units',
+                         returnclass = 'sf')
+france <- worldmap[worldmap$name == 'France',]
+
+plot <- ggplot() + geom_sf(data = france) + theme_bw() + geom_point(data = franceStationsPos , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color = "blue") + labs(title = "Position des stations météos en France")
+ggplotly(plot)
+```
+
+Le filtre par longitude/latitude n'est pas parfait, la France n'ayant pas la forme du Colorado; il laisse passer quelques stations d'Espagne de la côte Nord, et une du Royaume Uni vers Plymouth. On aimerait tout de même avoir la moyenne de température sur toutes ces stations. On va donc grouper nos relevés par mois, en gardant la moyenne de toutes les stations sur ce mois-ci.
+
+```{r, out.width='100%'}
+plot <- franceStations %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
+    geom_smooth(method = 'loess', formula = 'y ~ x') +
+    labs(title = "Evolution de la température moyenne en France", x = "Date", y = "Température moyenne (°C)")
+ggplotly(plot)
+```
+
+On retrouve donc une évolution moins extrême, mais qui est toujours là (surtout dans les dernières années).
+
+On aimerait retrouver les périodes de grande chaleur dans les dernières années. La température maximale enregistrée convient parfaitement à notre besoin.
+
+```{r, out.width='100%'}
+plot <- franceStations %>%
+  filter(`MAXIMUM TEMPERATURE (deg C)` > -800, `MAXIMUM TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MAXIMUM TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
+    geom_line(color = tempColor) +
+    geom_hline(yintercept = 27.5, linetype = "dotted", colour= 'red') +
+    labs(title = "Evolution de la température maximale en France", x = "Date", y = "Température maximale moyenne (°C)")
+ggplotly(plot)
+```
+
+On peut ici bien démarquer deux années vers 2005 : ce sont les canicules de [2003](https://fr.wikipedia.org/wiki/Canicule_europ%C3%A9enne_d%27ao%C3%BBt_2003?oldformat=true) et [2006](https://www.wikiwand.com/fr/Canicule_de_juillet_2006_en_France), la première faisant 15.000 morts.
+Est-ce qu'on peut isoler d'autres évènements importants des dernières années ?
+
+## Australie
+
+On va s'intéresser ici à l'Australie, et plus particulièrement aux feux dont on a autant entendu parler en 2020.
+
+### Comparaison moyenne des températures
+
+On va commencer par regarder les températures moyennes de l'Australie pour se donner un peu une idée du pays. On peut les comparer avec la France et le monde entier.
+
+```{r, out.width='100%'}
+australiaTemp <- data %>%
+  filter(`LONGITUDE (deg)` > 113, `LONGITUDE (deg)` < 153, `LATITUDE (deg)` > -35, `LATITUDE (deg)` < -14) %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(temp = mean(`MEAN TEMPERATURE (deg C)`))
+
+franceTemp <- franceStations %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(temp = mean(`MEAN TEMPERATURE (deg C)`))
+
+plot <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  arrange(`YEAR-MONTH`) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(globalTemp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`)) + 
+    geom_smooth(aes(y = globalTemp, color = "World"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(aes(y = franceTemp$temp, color = "France"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(aes(y = australiaTemp$temp, color = "Australia"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    ylim(0, 30) + 
+    labs(title = "Evolution de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne (°C)", colour = "Données")
+ggplotly(plot)
+```
+
+Pour notre objectif initial, l'Australie a bien 10 °C de plus sur l'année que le France ou le reste du monde.
+Mais est-ce que c'est vraiment ça la température sur le reste du monde ? On peut remarquer que la moyenne sur le monde entier correspond plus à un pays de l'hémisphère Nord qu'une moyenne entre les deux ... peut-être à cause de la répartition des stations ?
+
+```{r}
+southStations <- data %>%
+  filter(`LATITUDE (deg)` < 0, `LATITUDE (deg)` > -1000)
+northStations <- data %>%
+  filter(`LATITUDE (deg)` > 0, `LATITUDE (deg)` < 1000)
+stationCount <- data.frame(
+  Hemisphere = c("South", "North"),
+  count = c(count(southStations) %>% pull(),count(northStations) %>% pull())
+)
+
+stationCount %>% ggplot(aes(x=count, y=Hemisphere, colour = Hemisphere, fill = Hemisphere)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Répartition des relevés entre hémisphère Nord et Sud")
+```
+
+Et il y a bien 3 fois plus de relevés dans le nord que dans le sud. Il peut alors être intéressant d'essayer de corriger cette inégalité. Une simple division nous donnant un ratio de 3.596679, nous allons dupliquer les relevés de l'hémisphère Sud.
+
+```{r, out.width='100%'}
+plot <- bind_rows(data, southStations, southStations, southStations[0:as.numeric(round(count(southStations)*0.596679)),]) %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800, `LATITUDE (deg)` > -1000, `LATITUDE (deg)` < 1000) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  arrange(`YEAR-MONTH`) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(globalTemp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`)) + 
+    geom_smooth(aes(y = globalTemp, color = "World"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(aes(y = franceTemp$temp, color = "France"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(aes(y = australiaTemp$temp, color = "Australia"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    ylim(0, 30) + 
+    labs(title = "Evolution corrigée de la température moyenne dans le monde, en France, en Australie", x = "Date", y = "Température moyenne (°C)", colour = "Données")
+ggplotly(plot)
+```
+
+Le résultat obtenu est assez satisfaisant, étant donnée notre technique de duplication des relevés un peu approximative.
+On se rapproche plus d'une moyenne entre les deux hémisphères, même si le côté Nord se fait encore assez ressentir.
+
+Pour compléter ce point, nous avons réalisé un graphique sur Shiny représentant les différentes stations dans le monde, et le nombre de relevés par station (représenté par la couleur) pour une année donnée - que l'on choisit avec un slider.
+
+```{r include=FALSE}
+releves <- data %>%
+  # filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2019-01-01"))) %>%
+  filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+  group_by(`WMO ID`) %>%
+  summarize(count = n(), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct()
+```
+
+```{r, out.width='100%'}
+releves_world_map <- function(pointSize = 1.5){
+  ggplot() + 
+    geom_jitter(data = releves, aes(x = lon, y = lat, color = count), size = pointSize, alpha = 0.5) +
+    scale_color_gradient(low = "white", high = "blue") +
+    geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map(xlim=c(-180,180)) + 
+    labs(title = "Nombres de relevés par station")
+}
+
+releves_world_map()
+```
+
+
+### Etude spécifique de l'Australie
+
+On va maintenant s'intéresser uniquement à l'Australie, et plus particulièrement ses feux.
+Les données intéressantes de notre dataset seraient alors la température maximale atteinte, et la quantité de précipitations au cours des années.
+
+```{r, out.width='100%'}
+australiaTemp <- data %>%
+  filter(`LONGITUDE (deg)` > 113, `LONGITUDE (deg)` < 153, `LATITUDE (deg)` > -35, `LATITUDE (deg)` < -14) %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2010-01-01"))) %>%
+  filter(`MAXIMUM TEMPERATURE (deg C)` > -800, `MAXIMUM TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`TOTAL PRECIPITATION (mm)` > -800, `TOTAL PRECIPITATION (mm)` < 2000) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(temp = mean(`MAXIMUM TEMPERATURE (deg C)`), rain = mean(`TOTAL PRECIPITATION (mm)`))
+
+coeff <- 10
+
+plot <- australiaTemp %>%
+  ggplot(aes(x = `YEAR-MONTH`)) + 
+  geom_line(aes(y = temp, colour = "Temp")) +
+  geom_line(aes(y = rain/coeff + 20, colour = "Rain")) +
+  geom_vline(xintercept = as.numeric(as.Date('2019-05-01')), linetype = "dotted", colour= 'red') +
+  labs(title = "Evolution des températures et précipitations en Australie", colour = "Données", x = "Date", y = "Température moyenne (°C)")
+ggplotly(plot)
+```
+
+L'échelle de la pluie est complètement cassée, nous avons du l'adapter pour qu'elle soit facilement comparable à la température. La corrélation vient des saisons (janvier étant le milieu d'été en Australie). Si vous vous en souvenez, les feux en Australie ont commencé à être vraiment diffusés mondialement courant Mars 2020. Cependant, il s'avère que les feux duraient alors depuis bien longtemps, et ont [commencé vers Juin 2019](https://www.wikiwand.com/en/2019%E2%80%9320_Australian_bushfire_season) (ligne en rouge sur le graphique), début de période que l'on peut remarquer comme étant très sèche et avec une température très élevée par rapport au reste de la décennie. La plupart des feux de cette période s'avèrent avoir été commencés par de la foudre, dont la fréquence augmente en cas de sécheresse et haute température.
+En poussant un peu plus les recherches, on a appris que la sécheresse - et les feux - ont été principalement sur la côté Est. Est-ce qu'on peut noter la différence par les graphes ?
+
+```{r, out.width='100%'}
+australiaWestTemp <- data %>%
+  filter(`LONGITUDE (deg)` > 140, `LONGITUDE (deg)` < 153, `LATITUDE (deg)` > -35, `LATITUDE (deg)` < -14) %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2019-01-01"))) %>%
+  filter(`MAXIMUM TEMPERATURE (deg C)` > -800, `MAXIMUM TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`TOTAL PRECIPITATION (mm)` > -800, `TOTAL PRECIPITATION (mm)` < 2000) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(temp = mean(`MAXIMUM TEMPERATURE (deg C)`), rain = mean(`TOTAL PRECIPITATION (mm)`))
+
+australiaEstTemp <- data %>%
+  filter(`LONGITUDE (deg)` > 113, `LONGITUDE (deg)` < 140, `LATITUDE (deg)` > -35, `LATITUDE (deg)` < -14) %>%
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2019-01-01"))) %>%
+  filter(`MAXIMUM TEMPERATURE (deg C)` > -800, `MAXIMUM TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`TOTAL PRECIPITATION (mm)` > -800, `TOTAL PRECIPITATION (mm)` < 2000) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(temp = mean(`MAXIMUM TEMPERATURE (deg C)`), rain = mean(`TOTAL PRECIPITATION (mm)`))
+
+coeff <- 10
+
+plot <- australiaWestTemp %>%
+  ggplot(aes(x = `YEAR-MONTH`)) + 
+  geom_line(aes(y = temp, colour = "West")) +
+  geom_line(aes(y = australiaEstTemp$temp, colour = "East")) +
+  labs(title = "Evolution de la température sur les deux côtes", colour = "Données", x = "Date", y = "Température moyene  (°C)")
+ggplotly(plot)
+```
+
+En terme de température, on peut en effet noter une légère différence.
+
+```{r, out.width='100%'}
+plot <- australiaWestTemp %>%
+  ggplot(aes(x = `YEAR-MONTH`)) + 
+  geom_line(aes(y = rain, colour = "West")) +
+  geom_line(aes(y = australiaEstTemp$rain, colour = "East")) +
+  labs(title = "Evolution de la quantité de précipitation sur les deux côtes",  colour = "Données", x = "Date", y = "Précipitation (mm)" )
+ggplotly(plot)
+```
+
+Mais c'est en terme de précipitations que la différence s'est fait ressentir. Une pluie faible tout au long de la période, et une saison des pluies très insuffisante.
+
+La différence Nord/Sud dont nous avons parlé plus tôt est très [intéressante](https://youtu.be/dQw4w9WgXcQ). On aimerait voir si on peut séparer la Terre en différents zones de chaleurs de la même manière.
+
+## Zones de chaleur dans le monde
+
+Le seul problème que l'on peut rencontrer, c'est un manque de données. Nos relevés ne proviennent pas d'un satellite, mais de multiples stations sur le globe. On aura donc aucune valeur pour les océans (hormis les îles), et certains pays peuvent manquer de relevés, tandis que d'autres en auront énormément.
+On va donc grouper tous nos relevés par station, et faire une moyenne nos températures moyennes. On peut ensuite représenter tout ça avec des points dont la couleur varie la température.
+
+```{r include=FALSE}
+temp <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -20, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  # filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2019-01-01"))) %>%
+  group_by(`WMO ID`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct()
+```
+
+```{r, out.width='100%'}
+rotate_map <- function(angle = -74, pointSize = 1){
+  ggplot() + 
+    geom_jitter(data = temp, aes(x = lon, y = lat, color = Temp), size = pointSize, alpha = 0.5) +
+    scale_color_gradient2(low = "green", high = "#FF0000", mid = "#3F94FE") +
+    geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map("ortho", orientation=c(20, angle, 0)) + 
+    labs(title = "Températures moyennes dans le monde")
+}
+
+rotate_map(60)
+```
+
+On a bien des grosses différences de relevés entre certain pays. On peut tricher et augmenter un peu la taille des points pour remplir un peu plus notre carte, en jouant sur la transparence de nos points.
+
+```{r, out.width='100%'}
+rotate_map(60, 2)
+```
+
+Et pour une version animée, parce que c'est assez stylé : [![Températures moyennes dans le monde](https://i.postimg.cc/gJKFpFGj/temp-world.gif)](https://postimg.cc/MMXr0LMJ)
+
+Mais bon, ce n'est pas le plus simple à lire si on cherche un pays en particulier. On peut donc changer la projection pour mieux représenter le monde en entier.
+
+```{r include=FALSE}
+temp <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -20, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  # filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2019-01-01"))) %>%
+  filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+  group_by(`WMO ID`) %>%
+  summarize(`Temp (°C)` = mean(`MEAN TEMPERATURE (deg C)`), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct()
+```
+
+```{r, out.width='100%'}
+mercator_map <- function(pointSize = 2){
+  ggplot() + 
+    geom_jitter(data = temp, aes(x = lon, y = lat, color = `Temp (°C)`), size = pointSize, alpha = 0.5) +
+    scale_color_gradient2(low = "green", high = "#FF0000", mid = "#3F94FE") +
+    geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map(xlim=c(-180,180)) + 
+    labs(title = "Températures moyennes dans le monde")
+}
+
+mercator_map()
+```
+
+
+```{r}
+# saveGIF({
+#  ani.options(nmax = 360)
+#  for(i in seq(0,360)){
+#    print(rotate_map(i, 3))
+#    print(i)
+#  }
+#}, interval = 0.1, outdir="./data", movie.name = "temp_world.gif")
+```
+
+Ce graphe nous montre la température moyenne des pays sur les 30 dernières années. Cela est assez intéressant pour voir les zones de chaleur continentales, comparer les pays un à un, et voir les différences de chaleur dans un même pays en nous donnant plus de précision que "il fait plus chaud à l'équateur".
+On peut cependant extraire encore plus d'informations de nos températures moyennes. Et si on voulait voir les zones qui ont la plus grosse augmentation de température ? On peut prendre la température moyenne de 2020 et 2010, et regarder les stations qui ont le plus de différence.
+
+```{r include=FALSE}
+temp2020 <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -20, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2020-12-01")), `YEAR-MONTH` >= as.Date(as.character("2020-01-01"))) %>%
+  filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+  group_by(`WMO ID`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct() %>%
+  rename(recentTemp = Temp)
+
+temp2010 <- data %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -20, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2010-12-01")), `YEAR-MONTH` >= as.Date(as.character("2010-01-01"))) %>%
+  filter(`LONGITUDE (deg)` < 180, `LONGITUDE (deg)` > -180, `LATITUDE (deg)` < 180, `LATITUDE (deg)` > -180) %>%
+  group_by(`WMO ID`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`), lat = `LATITUDE (deg)`, lon = `LONGITUDE (deg)`) %>%
+  distinct() %>%
+  rename(oldTemp = Temp)
+
+anomalies <- right_join(temp2020, temp2010) %>%
+  mutate(`Temp (°C)` = recentTemp - oldTemp) %>%
+  filter(`Temp (°C)` > -4, `Temp (°C)` < 4)
+```
+
+```{r, out.width='100%'}
+growth_map <- function(angle = 60, pointSize = 4){
+  ggplot() + 
+    geom_jitter(data = anomalies, aes(x = lon, y = lat, color = `Temp (°C)`), size = pointSize, alpha = 0.4) +
+    scale_color_gradient2(low = "#3F94FE", high = "#FF0000") + 
+    geom_path(data = world.df, aes(x = long, y = lat, group = group)) +
+    coord_map(xlim=c(-180,180)) + 
+    labs(title = "Evolution des températures moyennes dans le monde depuis 2010")
+}
+
+growth_map()
+```
+
+Même si l'Europe a l'air de prendre assez chère, c'est aussi la zone qui a le plus de stations, ce qui limite les erreurs et augmente le nombre de relevés superposés. De plus, beaucoup de pays manquent de relevés en 2010, comme en Amérique du Sud et en Afrique, ce qui accentue encore la différence de couleur et fait bien ressortir le rouge de l'Europe. C'est néanmoins assez inquiétant, et nous pensions voir une tendance similaire pour les Etat-Unis - à tord. On peut toutefois noter que notre Australie bien aimée est toujours dans les starting blocks de la malaisance.
+Nous avons intégré ce graphique dans notre application Shiny, permettant de choisir une année en particulier (si on choisit 2010, on aura la différence de température entre 2010 et 2011).
+
+```{r}
+# saveGIF({
+#  ani.options(nmax = 360)
+#  for(i in seq(0,360)){
+#    print(growth_map(i))
+#    print(i)
+#  }
+#}, interval = 0.1, outdir="./data", movie.name = "growth_world.gif")
+```
+
+## Pôle nord
+
+Intéressons nous maintenant aux données météorologiques relevés autour du pôle nord. 
+Pour savoir quels stations prendre pour le relevés de pôles nous avons fixé une latitude de 75° qui nous permet d'avoir des stations autour du cercle pôlaire. 
+
+```{r}
+polarStations <- data %>% 
+  filter(`LONGITUDE (deg)` < 180,  `LATITUDE (deg)` > 75)
+
+  ggplot() + 
+    geom_polygon(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map("ortho", orientation=c(50, -20, 0)) +
+    geom_point(data = polarStations , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color='red')
+```
+
+Nous souhaitons ici suivre l'évolution de la température au cours des années en les segmentant par mois. Les stations étant toutes assez proche du cercle polaire, on peut se permettre d'effectuer une moyenne des températures de chaque stations pour chaque mois. 
+
+```{r, out.width='100%'}
+plot <- polarStations %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`, y = Temp)) + 
+    geom_smooth(method = 'loess', formula = 'y ~ x') +
+    labs(title = "Evolution de la température moyenne au pôle nord", x = "Date", y = "Température moyenne (°C)")
+ggplotly(plot)
+```
+
+On constate (avec horreur) que depuis les années 1990 la température aux pôles augmente de plus en plus, particulièrement les températures maximales. 
+
+## Banquise
+
+Nous souhaitons voir comment cette augmentation influe sur la problématique des fontes des banquises, un sujet qui est très médiatisé depuis les années 2000. 
+
+Le format de date ne convenait pas aux utilisations que nous voulions en faire donc nous avons reformaté les tables afin d'obtenir des mesures pour chaque mois sous forme de ligne au bon format.
+Nous avons également ajusté le format des valeurs afin de garder la valeur décimale.
+
+```{r}
+dataSeaIceModified <- dataSeaIce %>%
+  select(-X14) %>%
+  gather(key = "Month",value = "Area",-X1,-Annual ) %>%
+  unite("Date", X1, Month, sep = "-", remove = TRUE)
+dataSeaIceModified$`Date` <- paste(dataSeaIceModified$`Date`,"01",sep="-")
+dataSeaIceModified$`Date` <- as.Date(format(parse_date(dataSeaIceModified$`Date`,"%Y-%B-%d",locale=locale("en")),"%Y-%m-%d"))
+dataSeaIceModified$`Area` <- (dataSeaIceModified$`Area`)/1000
+dataSeaIceModified$`Annual` <- (dataSeaIceModified$`Annual`)/1000
+```
+
+Ce Dataset représente l'évolution de la surface de la banquise en millions de km².
+
+```{r warning=FALSE, out.width='100%'}
+plot <- dataSeaIceModified %>%
+    ggplot(aes(x = `Date`, y = `Area`)) + 
+    geom_smooth(method = 'loess', formula = 'y ~ x') +
+    labs(title = "Evolution de la surface de la banquise en fonction du temps", x = "Date", y = "Aire en Mkm²")
+ggplotly(plot)
+```
+
+On constate qu'au fil du temps , la taille de la banquise diminue depuis  1995 jusqu'à nos jours.
+
+Il est alors intéréssant de croiser ces données avec nos mesures préalablement effectués afin de déterminer une éventuelle correlation entre l'évolution de la température au pôles mesurés par les différentes stations autour du cercle pôlaire. 
+
+
+Afin de rapprocher les deux courbes pour mieux visualiser l'évolution au cours des ans nous avons réduit l'échelle de valeur de la surface en MKm en soustraillant "- 20" aux valeurs.
+
+Afin de pouvoir comparer encore mieux la température avec la surface de la banquise nous avons crée deux graphiques interactifs sur Shiny pour avoir un visuel au bonnes echelles de l'évolution de ces deux paramètres en fonction des années. (Voir Shiny - Pôle Nord)
+
+```{r warning=FALSE, out.width='100%'}
+
+arcticStations <- polarStations %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`))
+reducedDataSeaIce <- dataSeaIceModified %>%
+  filter(`Date` <= as.Date(as.character("2020-12-01")), `Date` >= as.Date(as.character("1986-01-01")))
+
+plot <- ggplot() + 
+    geom_smooth(data= arcticStations, aes(x = `YEAR-MONTH`, y = Temp, color = "Temperature"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(data= reducedDataSeaIce, aes(x = `Date`, y = Area -20, color = "Aire Mkm²"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    labs(title = "Evolution de la température et de la surface de la banquise en fontion du temps", x = "Date", y = "Température moyenne/Aire en Mkm²", colour = "Données")
+ggplotly(plot)
+```
+
+On constate donc qu'il y a en effet une correlation entre la temperature qui augmente aux pôles et la surface des glaciers dû au réchauffement des pôles qui donc fait fondre la glace. 
+
+### Groenland
+
+En 2018 le Groenland a vécu pour la première fois, la cassure de sa banquise en été révélant des eaux sans glace, phénomène qui n'était jamais arrivé et qui montre bien les première répercussions de cette réduction de la surface de la banquise et les causes de l'augmentation de la température.
+
+[Article The Guardian sur la banquise du Groenland](https://www.theguardian.com/world/2018/aug/21/arctics-strongest-sea-ice-breaks-up-for-first-time-on-record)
+
+```{r}
+GreenlandStation <- data %>% 
+  filter(`LONGITUDE (deg)` < 10, `LONGITUDE (deg)` > -20,  `LATITUDE (deg)` > 77)
+
+  ggplot() + 
+    geom_polygon(data = world.df, aes(x = long, y = lat, group = group)) +
+    scale_y_continuous(breaks = (-2:2) * 30) +
+    scale_x_continuous(breaks = (-4:4) * 45) +
+    coord_map("ortho", orientation=c(50, -20, 0)) +
+    geom_point(data = GreenlandStation , aes(x = `LONGITUDE (deg)`, y = `LATITUDE (deg)`), color='red')
+```
+
+Si l'on prend la station météorologique la plus au Nord du Groenland on constate en effet qu'il y a eu en 2018 des températures minimales qui ont été beaucoup moins basses qu'à l'ordinaire dans la même période.
+
+```{r, out.width='100%'}
+plot <- GreenlandStation %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  filter(`YEAR-MONTH` <= as.Date(as.character("2019-01-01")), `YEAR-MONTH` >= as.Date(as.character("2010-01-01"))) %>%
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`)) %>%
+    ggplot(aes(x = `YEAR-MONTH`)) +
+    geom_line(aes(y = Temp, colour = "Température")) +
+    labs(title = "Evolution de la température au nord du Groenland", x = "Date", y = "Température moyenne (°C)")
+ggplotly(plot)
+```
+
+## Niveau des eaux 
+
+Afin de déterminer s'il y a une causalité entre la fonte des glaciers et l'eau nous avons choisi de visualiser l'évolution du niveau des eau aux cours des dernières années afin de déterminer une éventuelle conséquence à la fonte des glaciers. 
+
+Pour cela nous avons utilisé les données CSV See_Level_Rise.csv. Ce dataset est un ensemble de relevé depuis 1992 du niveau global des eaux. Les mesures ont été faites par différents radars durant les années. Nous avons réalisé un formatage de la table year qui donnait l'année ainsi que le temps en pourcentage avant la fin de l'année à laquelle à été faite la mesure.
+
+```{r include=FALSE}
+dataSeeLevelRiseImproved <- dataSeeLevelRise %>%
+  separate(year,c("year", "percentMonth"))%>%
+  rename( Jason1 = `Jason-1`, Jason2 = `Jason-2`, Jason3 = `Jason-3`)
+  
+dataSeeLevelRiseImproved$`year` <-as.Date(paste(dataSeeLevelRiseImproved$`year`,"-01-01",sep=""))
+dataSeeLevelRiseImproved$`TOPEX/Poseidon` <-as.numeric(dataSeeLevelRiseImproved$`TOPEX/Poseidon`)
+```
+
+Dans un premier temps on souhaite visualiser l'évolution de la montée des eaux depuis 1992 à nos jours. Cette visualisation présente les 4 radars utilisés lors des mesure du niveau d'eau sur les différentes années : 
+
+```{r}
+
+reducedDataSeaIce <- dataSeaIceModified %>%
+  filter(`Date` <= as.Date(as.character("2020-12-01")), `Date` >= as.Date(as.character("1992-01-01")))
+
+plot <- dataSeeLevelRiseImproved %>%
+  group_by(`year`) %>%
+  summarize(poseidon = mean(`TOPEX/Poseidon`, na.rm = TRUE), jason1 = mean(`Jason1`, na.rm = TRUE), jason2 = mean(`Jason2`, na.rm = TRUE), jasonSeaLevel3 = mean(`Jason3`, na.rm = TRUE)) %>%
+    ggplot(aes(x = `year`)) +
+    geom_line(aes(y = poseidon, colour = "Poseidon")) +
+    geom_line(aes(y = jason1, colour = "Jason 1")) +
+    geom_line(aes(y = jason2, colour = "Jason 2")) +
+    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    labs(title = "Evolution du niveau globale des eaux",  y="Montée des eaux en mm",colour = "Données" )
+ggplotly(plot)
+
+```
+
+On constate donc qu'au cours des 30 dernières années , le niveau de l'eau sur la surface de la terre a augmenté de 60 mm. On remarque que l'augmentation du niveau des eaux évolue de manière linéaire qui semble suivre la même allure que l'évolution de la température moyenne au pôle nord.  (représenté un peu plus haut). 
+
+
+Sur le graph ci-dessous afin d'obtenir la même echelle sur le graphique nous avons multiplié l'aire de la banquise avec un coefficient de 5 afin d'avoir la bonne echelle lors de la visualisation. La température a également été multiplié par un coefficient de 10 afin de mettre en evidence la courbe de celle-ci.
+
+```{r}
+
+reducedDataSeaIce <- dataSeaIceModified %>%
+  filter(`Date` <= as.Date(as.character("2020-12-01")), `Date` >= as.Date(as.character("1992-01-01")))
+
+arcticStations <- polarStations %>%
+  filter(`MEAN TEMPERATURE (deg C)` > -800, `MEAN TEMPERATURE (deg C)` < 800) %>% # On enlève les relevés sans températures
+  group_by(`YEAR-MONTH`) %>%
+  summarize(Temp = mean(`MEAN TEMPERATURE (deg C)`))
+
+plot <- dataSeeLevelRiseImproved %>%
+  group_by(`year`) %>%
+  summarize(poseidon = mean(`TOPEX/Poseidon`, na.rm = TRUE), jason1 = mean(`Jason1`, na.rm = TRUE), jason2 = mean(`Jason2`, na.rm = TRUE), jasonSeaLevel3 = mean(`Jason3`, na.rm = TRUE)) %>%
+    ggplot(aes(x = `year`)) +
+    geom_line(aes(y = poseidon, colour = "Poseidon")) +
+    geom_line(aes(y = jason1, colour = "Jason 1")) +
+    geom_line(aes(y = jason2, colour = "Jason 2")) +
+    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    geom_smooth(data= reducedDataSeaIce, aes(x = `Date`, y = Area * 5, color = "Aire Mkm² de la banquise"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    geom_smooth(data= arcticStations, aes(x = `YEAR-MONTH`, y = (Temp * 10) + 150 , color = "Température au pôle Nord"), method = 'loess', formula = 'y ~ x', se=F, show.legend = TRUE) +
+    labs(title = "Evolution du niveau globale des eaux",  y="Montée des eaux en mm",colour = "Données" )
+ggplotly(plot)
+
+```
+
+En poussant encore un peu plus loin on peut également prédire l'évolution du niveau des eaux dans les prochaines années en effectuant une régression linéaire en prennant une dizaine de point à différents endroits de la courbe : 
+
+```{r}
+levelPrediction <- data.frame(date = as.Date(c("2020-01-01", "2022-01-01", "2025-01-01","2032-01-01","2041-01-01","2050-01-01")),
+                  level=c(63.9920,70.7338,80.407,102.9778,131.9974,161.017))#Valeurs trouvée via regression lineaire.
+
+plot <- dataSeeLevelRiseImproved %>%
+  group_by(`year`) %>%
+  summarize(poseidon = mean(`TOPEX/Poseidon`, na.rm = TRUE), jason1 = mean(`Jason1`, na.rm = TRUE), jason2 = mean(`Jason2`, na.rm = TRUE), jasonSeaLevel3 = mean(`Jason3`, na.rm = TRUE)) %>%
+    ggplot(aes(x = `year`)) +
+    geom_line(aes(y = poseidon, colour = "Poseidon")) +
+    geom_line(aes(y = jason1, colour = "Jason 1")) +
+    geom_line(aes(y = jason2, colour = "Jason 2")) +
+    geom_line(aes(y = jasonSeaLevel3, colour = "Jason 3")) +
+    geom_vline(xintercept = as.numeric(as.Date('2041-01-01')), linetype="dashed", color="red")+
+    geom_hline(yintercept = 131, show.legend = "131", linetype="dashed", color="red")+
+    geom_line(data= levelPrediction, aes(x= date, y = level, colour = "Prédiction"), linetype = "dashed") +
+    labs(title = "Evolution du niveau globale des eaux",  y="Montée des eaux en mm",colour = "Données" )
+ggplotly(plot)
+
+```
+
+On peut alors prédire par exemple l'année où Venise sera submergé par le niveau des eaux. Venise étant à seulement 1,30 m au dessus du niveau de la mer, il est probable qu'en 2041 Venise soit définitivement submergé.
+
+# Conclusion
+
+Ce jeu de données a été très intéressant à utiliser, notamment grâce aux nombreuses stations et leurs relevés (pouvant s'élever à plus de 400 chacune). La quantité considérable de données à notre disposition a assuré une couverture internationale conséquente, et seules quelques zones extrêmes se sont retrouvées sans relevé.
+
+
+Les autres datasets de banquise et montée des eaux ont de plus permis d'ajouter des éléments concrets à notre exploration, rendant notre premier dataset plus cohérent et agréable à utiliser.
+
+
+Nous avons cependant rencontré quelques difficultés liées la plupart du temps au formatage des données. Par exemple, les données temporelles du dataset Sea_level_Rise avait pour valeur l’année suivis du pourcentage de l’année pour le mois et le jour dû au fait qu’il s'agit de mesure satellitaires.
+
+
+La gestion des données manquantes (NA) a également été problématique car cela a, à plusieurs reprises, faussé nos visualisations. Il nous a donc fallu dans certains cas les exclure de nos données ou les réinterpréter. 
+
+
+Dans chaque "focus" réalisé au cours de ce projet, il aurait été intéressant de compléter l'analyse en liant des données relatives au problème (données sur les feux en Australie, etc …), avec éventuellement d'autres facteurs environnementaux.
+
+
+Nous aurions également souhaité développer plus en détail la partie prédiction et ainsi faire émerger des zones géographiques qui seraient les plus touchées par le réchauffement climatique dans les prochaines années.
+
+> Je me suis rendu compte à quel point la visualisation de données peut être un point fort dans la compréhension des données et des phénomènes. “Une image vaut mille mots” prend ici tout son sens.
+> `r tufte::quote_footer('Marc-Antoine')`
+
+> Je n'avais encore jamais eu l'occasion d'explorer dans cette mesure des données (ni à cette échelle); ce projet et cette UE m'ont fourni des compétences solides pour la suite de mon parcours professionel.
+> `r tufte::quote_footer('Nao')`
